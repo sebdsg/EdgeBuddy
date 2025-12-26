@@ -2,13 +2,28 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { getGameAnalysis, generateAngleImage } from '../services/geminiService';
-import { BettingAngle, GroundingSource } from '../types';
+import { BettingAngle, GroundingSource, Game } from '../types';
 
-const TeamCrestLarge: React.FC<{ name: string }> = ({ name }) => {
-  const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2);
-  const bgColor = name.length % 2 === 0 ? 'bg-blue-500' : 'bg-indigo-500';
+const TeamCrestLarge: React.FC<{ name: string; logoUrl?: string }> = ({ name, logoUrl }) => {
+  const [imgError, setImgError] = useState(false);
+  const initials = (name || "T").split(' ').map(n => n[0]).join('').substring(0, 2);
+  const bgColor = (name || "").length % 2 === 0 ? 'bg-blue-500' : 'bg-indigo-500';
+
+  if (logoUrl && logoUrl.trim() !== '' && !imgError) {
+    return (
+      <div className="w-16 h-16 bg-white rounded-full p-2 border-2 border-white/30 shadow-2xl overflow-hidden flex items-center justify-center shrink-0">
+        <img 
+          src={logoUrl} 
+          alt={name} 
+          className="w-full h-full object-contain" 
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className={`w-12 h-12 ${bgColor} rounded-full flex items-center justify-center text-lg font-bold text-white shadow-lg border-2 border-white/30 shrink-0`}>
+    <div className={`w-16 h-16 ${bgColor} rounded-full flex items-center justify-center text-xl font-bold text-white shadow-lg border-2 border-white/30 shrink-0`}>
       {initials}
     </div>
   );
@@ -18,7 +33,7 @@ const GameDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const game = location.state?.game;
+  const game = location.state?.game as Game;
   
   const [analysis, setAnalysis] = useState<{ quickTakes: string[], angles: BettingAngle[], sources?: GroundingSource[] } | null>(null);
   const [angleImages, setAngleImages] = useState<Record<number, string>>({});
@@ -55,17 +70,17 @@ const GameDetailPage: React.FC = () => {
         <div className="space-y-6 relative z-10">
           <div className="text-center text-[10px] font-black uppercase tracking-[0.2em] opacity-60">{game.league} Matchup</div>
           <div className="flex items-center justify-between px-2">
-            <div className="flex flex-col items-center space-y-3">
-              <TeamCrestLarge name={game.homeTeam} />
-              <span className="font-bold text-sm text-center">{game.homeTeam}</span>
+            <div className="flex flex-col items-center space-y-3 w-1/3">
+              <TeamCrestLarge name={game.homeTeam} logoUrl={game.homeLogoUrl} />
+              <span className="font-bold text-xs text-center">{game.homeTeam}</span>
             </div>
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center w-1/3">
               <span className="text-2xl font-black italic opacity-20">VS</span>
               <span className="text-[10px] bg-white/10 px-3 py-1 rounded-full font-bold mt-2 uppercase">{game.startTime}</span>
             </div>
-            <div className="flex flex-col items-center space-y-3">
-              <TeamCrestLarge name={game.awayTeam} />
-              <span className="font-bold text-sm text-center">{game.awayTeam}</span>
+            <div className="flex flex-col items-center space-y-3 w-1/3">
+              <TeamCrestLarge name={game.awayTeam} logoUrl={game.awayLogoUrl} />
+              <span className="font-bold text-xs text-center">{game.awayTeam}</span>
             </div>
           </div>
         </div>
@@ -90,6 +105,9 @@ const GameDetailPage: React.FC = () => {
                   <p>{take}</p>
                 </div>
               ))}
+              {(!analysis?.quickTakes || analysis.quickTakes.length === 0) && (
+                 <p className="text-xs text-gray-400 italic">No specific news found for this matchup yet.</p>
+              )}
             </div>
           </section>
 
@@ -129,11 +147,11 @@ const GameDetailPage: React.FC = () => {
             </div>
           </section>
 
-          {analysis?.sources && (
+          {analysis?.sources && analysis.sources.length > 0 && (
             <section className="p-4 bg-gray-50 dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
                <h4 className="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest px-1">Data Sources</h4>
                <div className="flex flex-col gap-2">
-                 {analysis.sources.slice(0, 3).map((source, i) => (
+                 {analysis.sources?.slice(0, 3).map((source, i) => (
                    <a key={i} href={source.uri} target="_blank" className="flex items-center justify-between text-[10px] bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 text-blue-500 font-bold group">
                      <span className="truncate pr-4">{source.title}</span>
                      <span className="group-hover:translate-x-1 transition-transform">→</span>

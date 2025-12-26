@@ -19,6 +19,8 @@ export interface Game {
   league: string;
   homeTeam: string;
   awayTeam: string;
+  homeLogoUrl?: string;
+  awayLogoUrl?: string;
   startTime: string;
   insights: string[];
   groundingSources?: GroundingSource[];

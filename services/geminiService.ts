@@ -1,16 +1,37 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Instantiate GoogleGenAI per-call to ensure fresh API key usage from the environment or dialog.
+/**
+ * Helper to extract JSON from a model response, handling potential markdown wrappers or unexpected text.
+ */
+function parseModelJson(text: string | undefined) {
+  if (!text) return null;
+  try {
+    // Remove markdown code blocks if the model wrapped them despite instructions
+    const cleanJson = text.replace(/```json\n?|```/g, "").trim();
+    // Find the first [ or { and last ] or } to handle cases where text surrounds the JSON
+    const startIdx = Math.max(cleanJson.indexOf('['), cleanJson.indexOf('{'));
+    const endIdx = Math.max(cleanJson.lastIndexOf(']'), cleanJson.lastIndexOf('}'));
+    
+    if (startIdx === -1 || endIdx === -1) return JSON.parse(cleanJson);
+    
+    const jsonSubstring = cleanJson.substring(startIdx, endIdx + 1);
+    return JSON.parse(jsonSubstring);
+  } catch (e) {
+    console.error("JSON Parsing Error:", e, "Raw text snippet:", text?.substring(0, 100));
+    return null;
+  }
+}
 
 export async function getLiveGames(sports: string[]) {
-  // Use a fresh instance for each request to ensure the latest API key is used as per guidelines.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Find the 5 biggest upcoming sports matches for today/tomorrow in these sports: ${sports.join(', ')}. 
-      Return them in a JSON list of objects. Each object should have: id, sport, league, homeTeam, awayTeam, startTime (e.g. "7:00 PM ET"), and 3 'insights' based on recent form.`,
+      contents: `Search for the 5 most popular upcoming or live sports matches for: ${sports.join(', ')}. 
+      Provide the details in a valid JSON array. 
+      For each match, include: id, sport, league, homeTeam, awayTeam, startTime, and 3 insights.
+      Also, try to find a direct URL to the official team logo (.png or .svg) for both teams. If a direct URL isn't found, use an empty string.`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -24,9 +45,12 @@ export async function getLiveGames(sports: string[]) {
               league: { type: Type.STRING },
               homeTeam: { type: Type.STRING },
               awayTeam: { type: Type.STRING },
+              homeLogoUrl: { type: Type.STRING },
+              awayLogoUrl: { type: Type.STRING },
               startTime: { type: Type.STRING },
               insights: { type: Type.ARRAY, items: { type: Type.STRING } }
-            }
+            },
+            required: ['id', 'sport', 'league', 'homeTeam', 'awayTeam', 'startTime', 'insights']
           }
         }
       }
@@ -37,8 +61,18 @@ export async function getLiveGames(sports: string[]) {
       uri: chunk.web?.uri
     })).filter((s: any) => s.uri) || [];
 
-    const games = JSON.parse(response.text);
-    return games.map((g: any) => ({ ...g, groundingSources: sources }));
+    const games = parseModelJson(response.text);
+    
+    if (Array.isArray(games)) {
+      return games.map((g: any) => ({ 
+        ...g, 
+        insights: Array.isArray(g.insights) ? g.insights : [],
+        homeLogoUrl: g.homeLogoUrl || '',
+        awayLogoUrl: g.awayLogoUrl || '',
+        groundingSources: sources 
+      }));
+    }
+    return [];
   } catch (error) {
     console.error("Live Games Error:", error);
     return [];
@@ -46,14 +80,13 @@ export async function getLiveGames(sports: string[]) {
 }
 
 export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport: string) {
-  // Use a fresh instance for each request to ensure the latest API key is used.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Search for current news, injury reports, and betting odds for ${homeTeam} vs ${awayTeam} in ${sport}. 
-      Provide 4 bullet points of "Quick Take" insights including latest news. 
-      Also provide 3 "Betting Angles" in JSON format with title, why it makes sense, what could break it, risk level (Low/Medium/High), market, and selection.`,
+      Provide 4 bullet points of "Quick Take" insights. 
+      Also provide 3 "Betting Angles" in JSON format with: title, why, risk, riskLevel, market, and selection.`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -72,10 +105,12 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
                   riskLevel: { type: Type.STRING },
                   market: { type: Type.STRING },
                   selection: { type: Type.STRING }
-                }
+                },
+                required: ['title', 'why', 'risk', 'riskLevel', 'market', 'selection']
               }
             }
-          }
+          },
+          required: ['quickTakes', 'angles']
         }
       }
     });
@@ -85,8 +120,15 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
       uri: chunk.web?.uri
     })).filter((s: any) => s.uri) || [];
 
-    const data = JSON.parse(response.text);
-    return { ...data, sources };
+    const data = parseModelJson(response.text);
+    if (data) {
+      return { 
+        quickTakes: Array.isArray(data.quickTakes) ? data.quickTakes : [],
+        angles: Array.isArray(data.angles) ? data.angles : [],
+        sources 
+      };
+    }
+    return null;
   } catch (error) {
     console.error("Analysis Error:", error);
     return null;
@@ -94,7 +136,6 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
 }
 
 export async function generateProImage(prompt: string, size: "1K" | "2K" | "4K" = "1K", aspectRatio: "1:1" | "16:9" | "9:16" = "16:9") {
-  // Creating a fresh GoogleGenAI instance right before making an API call for pro models.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -108,14 +149,16 @@ export async function generateProImage(prompt: string, size: "1K" | "2K" | "4K" 
       }
     });
 
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+    const candidates = response.candidates;
+    if (candidates && candidates.length > 0) {
+      for (const part of candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
       }
     }
     return null;
   } catch (error: any) {
-    // Handling specific API key/billing issues to trigger re-selection.
     if (error.message?.includes("Requested entity was not found.")) {
        throw new Error("API_KEY_ERROR");
     }
@@ -125,7 +168,6 @@ export async function generateProImage(prompt: string, size: "1K" | "2K" | "4K" 
 }
 
 export async function editImage(base64Image: string, prompt: string, mimeType: string = 'image/jpeg') {
-  // Use a fresh instance for each request to ensure the latest API key is used.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -138,9 +180,12 @@ export async function editImage(base64Image: string, prompt: string, mimeType: s
       }
     });
 
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+    const candidates = response.candidates;
+    if (candidates && candidates.length > 0) {
+      for (const part of candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
       }
     }
     return null;
@@ -151,7 +196,6 @@ export async function editImage(base64Image: string, prompt: string, mimeType: s
 }
 
 export async function generateAngleImage(angleTitle: string, sport: string): Promise<string | null> {
-  // Use a fresh instance for each request to ensure the latest API key is used.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateImages({
@@ -173,7 +217,6 @@ export async function generateAngleImage(angleTitle: string, sport: string): Pro
 }
 
 export async function getValueExplanation(game: string, market: string, selection: string, odds: string, appProb: number, rating: string) {
-  // Use a fresh instance for each request to ensure the latest API key is used.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -186,10 +229,12 @@ export async function getValueExplanation(game: string, market: string, selectio
           properties: {
             points: { type: Type.ARRAY, items: { type: Type.STRING } },
             risks: { type: Type.ARRAY, items: { type: Type.STRING } }
-          }
+          },
+          required: ['points', 'risks']
         }
       }
     });
-    return JSON.parse(response.text);
+    const data = parseModelJson(response.text);
+    return data || { points: [], risks: [] };
   } catch (error) { return null; }
 }

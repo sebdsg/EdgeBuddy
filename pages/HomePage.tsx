@@ -4,9 +4,24 @@ import { Link } from 'react-router-dom';
 import { Sport, Game } from '../types';
 import { getLiveGames } from '../services/geminiService';
 
-const TeamCrest: React.FC<{ name: string; size?: string }> = ({ name, size = "w-6 h-6" }) => {
-  const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2);
-  const bgColor = name.length % 2 === 0 ? 'bg-blue-600' : 'bg-indigo-600';
+const TeamCrest: React.FC<{ name: string; logoUrl?: string; size?: string }> = ({ name, logoUrl, size = "w-6 h-6" }) => {
+  const [imgError, setImgError] = useState(false);
+  const initials = (name || "T").split(' ').map(n => n[0]).join('').substring(0, 2);
+  const bgColor = (name || "").length % 2 === 0 ? 'bg-blue-600' : 'bg-indigo-600';
+
+  if (logoUrl && logoUrl.trim() !== '' && !imgError) {
+    return (
+      <div className={`${size} shrink-0 bg-white rounded-full p-0.5 border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden flex items-center justify-center`}>
+        <img 
+          src={logoUrl} 
+          alt={name} 
+          className="w-full h-full object-contain" 
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`${size} ${bgColor} rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 border border-white/20`}>
       {initials}
@@ -20,13 +35,20 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const sports: Sport[] = ['Soccer', 'Basketball', 'Football', 'Hockey', 'Baseball'];
 
-  useEffect(() => {
-    const fetchGames = async () => {
-      setLoading(true);
+  const fetchGames = async () => {
+    setLoading(true);
+    try {
       const liveGames = await getLiveGames(selectedSports);
-      setGames(liveGames);
+      setGames(Array.isArray(liveGames) ? liveGames : []);
+    } catch (err) {
+      console.error("Failed to fetch live games:", err);
+      setGames([]);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+
+  useEffect(() => {
     fetchGames();
   }, [selectedSports]);
 
@@ -90,13 +112,13 @@ const HomePage: React.FC = () => {
                       <div className="text-[10px] text-gray-400 font-bold uppercase">{game.league} • {game.startTime}</div>
                     </div>
                     <div className="text-lg font-bold text-[var(--text-main)] pt-1">
-                      <div className="flex items-center space-x-2">
-                        <TeamCrest name={game.homeTeam} />
+                      <div className="flex items-center space-x-3">
+                        <TeamCrest name={game.homeTeam} logoUrl={game.homeLogoUrl} />
                         <span>{game.homeTeam}</span>
                       </div>
-                      <div className="pl-3.5 text-gray-300 text-xs py-0.5 italic">vs</div>
-                      <div className="flex items-center space-x-2">
-                        <TeamCrest name={game.awayTeam} />
+                      <div className="pl-4 text-gray-300 text-xs py-0.5 italic">vs</div>
+                      <div className="flex items-center space-x-3">
+                        <TeamCrest name={game.awayTeam} logoUrl={game.awayLogoUrl} />
                         <span>{game.awayTeam}</span>
                       </div>
                     </div>
@@ -105,12 +127,15 @@ const HomePage: React.FC = () => {
 
                 <div className="space-y-2 bg-gray-50/50 dark:bg-gray-900/30 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
                   <div className="text-[10px] font-bold text-gray-400 uppercase mb-1 px-1">AI Hot Takes</div>
-                  {game.insights.map((insight, idx) => (
+                  {game.insights?.map((insight, idx) => (
                     <div key={idx} className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
                       <span className="text-blue-500">✨</span>
                       <span>{insight}</span>
                     </div>
                   ))}
+                  {(!game.insights || game.insights.length === 0) && (
+                    <div className="text-xs text-gray-400 italic px-1">Analysis pending...</div>
+                  )}
                 </div>
 
                 <Link 
@@ -123,11 +148,11 @@ const HomePage: React.FC = () => {
               </div>
             ))}
             
-            {games[0]?.groundingSources && (
+            {games[0]?.groundingSources && games[0].groundingSources.length > 0 && (
               <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-2xl">
                  <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Sources</h4>
                  <div className="flex flex-wrap gap-2">
-                   {games[0].groundingSources.map((source, i) => (
+                   {games[0].groundingSources?.map((source, i) => (
                      <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" className="text-[9px] bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-blue-500 truncate max-w-[150px]">
                        {source.title}
                      </a>
@@ -137,8 +162,15 @@ const HomePage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="text-center py-20 bg-[var(--card-bg)] rounded-3xl border-2 border-dashed">
+          <div className="text-center py-20 bg-[var(--card-bg)] rounded-3xl border-2 border-dashed border-[var(--border-color)]">
             <p className="font-bold text-gray-400">No live data found for selection.</p>
+            <p className="text-xs text-gray-400 mt-1 mb-4">Try selecting different sports or check back later.</p>
+            <button 
+              onClick={fetchGames}
+              className="px-6 py-2 bg-blue-100 text-blue-600 font-bold rounded-xl text-xs uppercase"
+            >
+              Retry Search
+            </button>
           </div>
         )}
       </div>
