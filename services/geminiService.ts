@@ -3,21 +3,42 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Game } from "../types";
 
 /**
- * Helper to extract JSON from a model response, handling potential markdown wrappers.
+ * Robust helper to extract JSON from a model response.
+ * It finds the outermost JSON structure (Array or Object) to handle
+ * cases where the model includes text explanations or citations.
  */
 function parseModelJson(text: string | undefined) {
   if (!text) return null;
   try {
-    const cleanJson = text.replace(/```json\n?|```/g, "").trim();
-    const startIdx = Math.max(cleanJson.indexOf('['), cleanJson.indexOf('{'));
-    const endIdx = Math.max(cleanJson.lastIndexOf(']'), cleanJson.lastIndexOf('}'));
+    // 1. Basic cleanup of markdown wrappers
+    let clean = text.replace(/```json/g, "").replace(/```/g, "").trim();
     
-    if (startIdx === -1 || endIdx === -1) return JSON.parse(cleanJson);
+    // 2. Identify the first occurrence of [ or {
+    const firstBracket = clean.indexOf('[');
+    const firstBrace = clean.indexOf('{');
     
-    const jsonSubstring = cleanJson.substring(startIdx, endIdx + 1);
-    return JSON.parse(jsonSubstring);
+    let startIdx = -1;
+    if (firstBracket !== -1 && firstBrace !== -1) {
+      startIdx = Math.min(firstBracket, firstBrace);
+    } else {
+      startIdx = firstBracket !== -1 ? firstBracket : firstBrace;
+    }
+
+    // 3. Identify the last occurrence of ] or }
+    const lastBracket = clean.lastIndexOf(']');
+    const lastBrace = clean.lastIndexOf('}');
+    const endIdx = Math.max(lastBracket, lastBrace);
+
+    if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
+      // If no structures found, try parsing the whole thing as a last resort
+      return JSON.parse(clean);
+    }
+
+    // 4. Extract and parse the substring
+    const jsonStr = clean.substring(startIdx, endIdx + 1);
+    return JSON.parse(jsonStr);
   } catch (e) {
-    console.error("JSON Parsing Error:", e);
+    console.error("JSON Parsing Error:", e, "Raw Text:", text?.substring(0, 100));
     return null;
   }
 }
@@ -38,19 +59,20 @@ const MOCK_FALLBACK_GAMES: Game[] = [
 
 export async function getLiveGames(sports: string[]): Promise<Game[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  // Use ISO string for absolute reference to the current moment
+  const nowStr = new Date().toISOString(); 
   
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Reference Date: ${todayStr}. 
-      Search sofascore.com specifically for the most popular UPCOMING or LIVE sports matches for: ${sports.join(', ')}.
-      Must be matches happening TODAY or TOMORROW.
+      contents: `Current UTC Timestamp: ${nowStr}. 
+      Act as a sports data aggregator. Search sofascore.com for the most popular UPCOMING or currently LIVE sports matches for: ${sports.join(', ')}.
+      Only include matches that are scheduled for TODAY or TOMORROW relative to the current timestamp.
       
       For each match provide:
-      1. id, sport, league, homeTeam, awayTeam, startTime (Local Time).
-      2. 3 AI insights based on current form.
-      3. A DIRECT high-resolution URL to the official team logo (.png or .svg) from Sofascore or official sources.
+      1. id (unique string), sport, league, homeTeam, awayTeam, startTime (formatted as 'HH:mm' or 'Live').
+      2. 3 AI insights based on current form and search data.
+      3. A DIRECT high-resolution URL to the official team logo (.png or .svg) found on Sofascore or official sites.
       
       Return as a JSON array.`,
       config: {
