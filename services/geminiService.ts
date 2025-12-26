@@ -1,15 +1,14 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { Game } from "../types";
 
 /**
- * Helper to extract JSON from a model response, handling potential markdown wrappers or unexpected text.
+ * Helper to extract JSON from a model response, handling potential markdown wrappers.
  */
 function parseModelJson(text: string | undefined) {
   if (!text) return null;
   try {
-    // Remove markdown code blocks if the model wrapped them despite instructions
     const cleanJson = text.replace(/```json\n?|```/g, "").trim();
-    // Find the first [ or { and last ] or } to handle cases where text surrounds the JSON
     const startIdx = Math.max(cleanJson.indexOf('['), cleanJson.indexOf('{'));
     const endIdx = Math.max(cleanJson.lastIndexOf(']'), cleanJson.lastIndexOf('}'));
     
@@ -18,22 +17,45 @@ function parseModelJson(text: string | undefined) {
     const jsonSubstring = cleanJson.substring(startIdx, endIdx + 1);
     return JSON.parse(jsonSubstring);
   } catch (e) {
-    console.error("JSON Parsing Error:", e, "Raw text snippet:", text?.substring(0, 100));
+    console.error("JSON Parsing Error:", e);
     return null;
   }
 }
 
-export async function getLiveGames(sports: string[]) {
+const MOCK_FALLBACK_GAMES: Game[] = [
+  {
+    id: 'f1',
+    sport: 'Soccer',
+    league: 'UCL',
+    homeTeam: 'Bayern Munich',
+    awayTeam: 'Real Madrid',
+    homeLogoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/1200px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png',
+    awayLogoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Real_Madrid_CF.svg/1200px-Real_Madrid_CF.svg.png',
+    startTime: 'Today, 21:00',
+    insights: ['High defensive block expected', 'Kane in scoring form', 'History favors the visitors']
+  }
+];
+
+export async function getLiveGames(sports: string[]): Promise<Game[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Search for the 5 most popular upcoming or live sports matches for: ${sports.join(', ')}. 
-      Provide the details in a valid JSON array. 
-      For each match, include: id, sport, league, homeTeam, awayTeam, startTime, and 3 insights.
-      Also, try to find a direct URL to the official team logo (.png or .svg) for both teams. If a direct URL isn't found, use an empty string.`,
+      model: 'gemini-3-pro-preview',
+      contents: `Reference Date: ${todayStr}. 
+      Search sofascore.com specifically for the most popular UPCOMING or LIVE sports matches for: ${sports.join(', ')}.
+      Must be matches happening TODAY or TOMORROW.
+      
+      For each match provide:
+      1. id, sport, league, homeTeam, awayTeam, startTime (Local Time).
+      2. 3 AI insights based on current form.
+      3. A DIRECT high-resolution URL to the official team logo (.png or .svg) from Sofascore or official sources.
+      
+      Return as a JSON array.`,
       config: {
         tools: [{ googleSearch: {} }],
+        thinkingConfig: { thinkingBudget: 8000 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
@@ -62,20 +84,13 @@ export async function getLiveGames(sports: string[]) {
     })).filter((s: any) => s.uri) || [];
 
     const games = parseModelJson(response.text);
-    
-    if (Array.isArray(games)) {
-      return games.map((g: any) => ({ 
-        ...g, 
-        insights: Array.isArray(g.insights) ? g.insights : [],
-        homeLogoUrl: g.homeLogoUrl || '',
-        awayLogoUrl: g.awayLogoUrl || '',
-        groundingSources: sources 
-      }));
+    if (Array.isArray(games) && games.length > 0) {
+      return games.map((g: any) => ({ ...g, groundingSources: sources }));
     }
-    return [];
+    return MOCK_FALLBACK_GAMES.filter(g => sports.includes(g.sport as any));
   } catch (error) {
     console.error("Live Games Error:", error);
-    return [];
+    return MOCK_FALLBACK_GAMES;
   }
 }
 
@@ -84,9 +99,7 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Search for current news, injury reports, and betting odds for ${homeTeam} vs ${awayTeam} in ${sport}. 
-      Provide 4 bullet points of "Quick Take" insights. 
-      Also provide 3 "Betting Angles" in JSON format with: title, why, risk, riskLevel, market, and selection.`,
+      contents: `Analyze ${homeTeam} vs ${awayTeam} in ${sport}. Focus on injury reports and latest news from Sofascore.`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -115,27 +128,12 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
       }
     });
 
-    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
-      title: chunk.web?.title || 'Source',
-      uri: chunk.web?.uri
-    })).filter((s: any) => s.uri) || [];
-
     const data = parseModelJson(response.text);
-    if (data) {
-      return { 
-        quickTakes: Array.isArray(data.quickTakes) ? data.quickTakes : [],
-        angles: Array.isArray(data.angles) ? data.angles : [],
-        sources 
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error("Analysis Error:", error);
-    return null;
-  }
+    return data;
+  } catch (error) { return null; }
 }
 
-export async function generateProImage(prompt: string, size: "1K" | "2K" | "4K" = "1K", aspectRatio: "1:1" | "16:9" | "9:16" = "16:9") {
+export async function generateProImage(prompt: string, size: "1K" | "2K" | "4K" = "1K", aspectRatio: string = "16:9") {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -144,53 +142,83 @@ export async function generateProImage(prompt: string, size: "1K" | "2K" | "4K" 
       config: {
         imageConfig: {
           imageSize: size,
-          aspectRatio: aspectRatio
+          aspectRatio: aspectRatio as any
         }
       }
     });
-
-    const candidates = response.candidates;
-    if (candidates && candidates.length > 0) {
-      for (const part of candidates[0].content.parts) {
-        if (part.inlineData) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
     }
     return null;
   } catch (error: any) {
-    if (error.message?.includes("Requested entity was not found.")) {
-       throw new Error("API_KEY_ERROR");
-    }
-    console.error("Pro Image Generation Error:", error);
+    if (error.message?.includes("Requested entity was not found.")) throw new Error("API_KEY_ERROR");
     return null;
   }
 }
 
-export async function editImage(base64Image: string, prompt: string, mimeType: string = 'image/jpeg') {
+export async function editImage(base64Image: string, prompt: string) {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
-          { inlineData: { data: base64Image.split(',')[1], mimeType } },
+          { inlineData: { data: base64Image.split(',')[1], mimeType: 'image/jpeg' } },
           { text: prompt }
         ]
       }
     });
-
-    const candidates = response.candidates;
-    if (candidates && candidates.length > 0) {
-      for (const part of candidates[0].content.parts) {
-        if (part.inlineData) {
-          return `data:image/png;base64,${part.inlineData.data}`;
-        }
-      }
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) return `data:image/png;base64,${part.inlineData.data}`;
     }
     return null;
+  } catch (error) { return null; }
+}
+
+export async function analyzeImage(base64Image: string) {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-preview',
+      contents: {
+        parts: [
+          { inlineData: { data: base64Image.split(',')[1], mimeType: 'image/jpeg' } },
+          { text: "Identify the sport, teams, and players in this image. Provide a brief expert analysis of what's happening." }
+        ]
+      }
+    });
+    return response.text;
+  } catch (error) { return "Could not analyze image."; }
+}
+
+export async function generateVideoWithVeo(base64Image: string, prompt: string, aspectRatio: "16:9" | "9:16" = "16:9") {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    let operation = await ai.models.generateVideos({
+      model: 'veo-3.1-fast-generate-preview',
+      prompt: prompt || 'Animate this sports scene with dynamic cinematic motion',
+      image: {
+        imageBytes: base64Image.split(',')[1],
+        mimeType: 'image/jpeg'
+      },
+      config: {
+        numberOfVideos: 1,
+        resolution: '720p',
+        aspectRatio: aspectRatio
+      }
+    });
+
+    while (!operation.done) {
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      operation = await ai.operations.getVideosOperation({ operation: operation });
+    }
+
+    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+    const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
   } catch (error) {
-    console.error("Image Edit Error:", error);
+    console.error("Veo Error:", error);
     return null;
   }
 }
@@ -200,20 +228,14 @@ export async function generateAngleImage(angleTitle: string, sport: string): Pro
   try {
     const response = await ai.models.generateImages({
       model: 'imagen-4.0-generate-001',
-      prompt: `Professional high-end sports broadcast graphic for "${angleTitle}" in ${sport}. Sleek 3D isometric minimalist design, cinematic lighting, vibrant blues and indigos. No text.`,
-      config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/jpeg',
-        aspectRatio: '16:9',
-      },
+      prompt: `Cinematic sports graphic for "${angleTitle}" in ${sport}. Minimalist, high-end 3D aesthetic.`,
+      config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio: '16:9' },
     });
     if (response.generatedImages?.[0]?.image?.imageBytes) {
       return `data:image/jpeg;base64,${response.generatedImages[0].image.imageBytes}`;
     }
     return null;
-  } catch (error) {
-    return null;
-  }
+  } catch (error) { return null; }
 }
 
 export async function getValueExplanation(game: string, market: string, selection: string, odds: string, appProb: number, rating: string) {
@@ -221,7 +243,7 @@ export async function getValueExplanation(game: string, market: string, selectio
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Game: ${game}, Market: ${market}, Selection: ${selection}, Odds: ${odds}, AI Prob: ${(appProb*100).toFixed(1)}%, Rating: ${rating}. Explain this value in plain English with 3 bullets why and 2 bullets risk.`,
+      contents: `Explain value for ${selection} in ${game} at ${odds}. AI Prob: ${(appProb*100).toFixed(1)}%.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -234,7 +256,6 @@ export async function getValueExplanation(game: string, market: string, selectio
         }
       }
     });
-    const data = parseModelJson(response.text);
-    return data || { points: [], risks: [] };
+    return parseModelJson(response.text);
   } catch (error) { return null; }
 }

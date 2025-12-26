@@ -97,14 +97,20 @@ const HomePage: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="py-20 text-center space-y-4">
-            <div className="animate-spin text-4xl">⚽</div>
-            <p className="text-sm font-bold text-gray-500">Searching global matchups...</p>
+          <div className="py-20 text-center space-y-6 bg-[var(--card-bg)] rounded-3xl border border-[var(--border-color)]">
+            <div className="relative inline-block">
+               <div className="animate-spin h-12 w-12 border-4 border-blue-50 border-t-blue-600 rounded-full" />
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-lg">📡</div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-black text-blue-600 uppercase tracking-widest">Searching Global Feeds</p>
+              <p className="text-[10px] text-gray-400 uppercase font-bold animate-pulse">Verifying sources via Search Grounding...</p>
+            </div>
           </div>
         ) : games.length > 0 ? (
           <div className="grid gap-4">
             {games.map((game) => (
-              <div key={game.id} className="bg-[var(--card-bg)] rounded-3xl shadow-sm border border-[var(--border-color)] p-5 space-y-4 theme-transition">
+              <div key={game.id} className="bg-[var(--card-bg)] rounded-3xl shadow-sm border border-[var(--border-color)] p-5 space-y-4 theme-transition animate-slideUp">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
@@ -141,19 +147,19 @@ const HomePage: React.FC = () => {
                 <Link 
                   to={`/game/${game.id}`}
                   state={{ game }}
-                  className="block w-full text-center py-3.5 bg-blue-600 text-white font-bold rounded-2xl shadow-md"
+                  className="block w-full text-center py-3.5 bg-blue-600 text-white font-bold rounded-2xl shadow-md active:scale-95 transition-transform"
                 >
                   Analyze Value
                 </Link>
               </div>
             ))}
             
-            {games[0]?.groundingSources && games[0].groundingSources.length > 0 && (
-              <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-2xl">
-                 <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Sources</h4>
+            {games.some(g => g.groundingSources && g.groundingSources.length > 0) && (
+              <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-2xl mt-2">
+                 <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2">Verified Sources</h4>
                  <div className="flex flex-wrap gap-2">
-                   {games[0].groundingSources?.map((source, i) => (
-                     <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" className="text-[9px] bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-blue-500 truncate max-w-[150px]">
+                   {games.flatMap(g => g.groundingSources || []).slice(0, 5).map((source, i) => (
+                     <a key={i} href={source.uri} target="_blank" rel="noopener noreferrer" className="text-[9px] bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-blue-500 truncate max-w-[150px] font-bold">
                        {source.title}
                      </a>
                    ))}
@@ -162,14 +168,17 @@ const HomePage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="text-center py-20 bg-[var(--card-bg)] rounded-3xl border-2 border-dashed border-[var(--border-color)]">
-            <p className="font-bold text-gray-400">No live data found for selection.</p>
-            <p className="text-xs text-gray-400 mt-1 mb-4">Try selecting different sports or check back later.</p>
+          <div className="text-center py-20 bg-[var(--card-bg)] rounded-3xl border-2 border-dashed border-[var(--border-color)] space-y-4">
+            <div className="text-4xl">🏜️</div>
+            <div>
+              <p className="font-bold text-gray-400">No live data found for selection.</p>
+              <p className="text-xs text-gray-400 mt-1 mb-4">The models might be busy. Try retrying.</p>
+            </div>
             <button 
               onClick={fetchGames}
-              className="px-6 py-2 bg-blue-100 text-blue-600 font-bold rounded-xl text-xs uppercase"
+              className="px-8 py-3 bg-blue-600 text-white font-bold rounded-2xl text-xs uppercase shadow-lg shadow-blue-500/20 active:scale-95"
             >
-              Retry Search
+              Retry Global Search
             </button>
           </div>
         )}
