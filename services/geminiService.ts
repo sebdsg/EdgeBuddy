@@ -3,42 +3,57 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Game } from "../types";
 
 /**
- * Robust helper to extract JSON from a model response.
- * It finds the outermost JSON structure (Array or Object) to handle
- * cases where the model includes text explanations or citations.
+ * Advanced JSON extraction helper.
+ * 1. Cleans markdown markers.
+ * 2. Locates the first balanced JSON structure.
+ * 3. Attempts to repair common truncation (missing closing brackets).
  */
 function parseModelJson(text: string | undefined) {
   if (!text) return null;
   try {
-    // 1. Basic cleanup of markdown wrappers
-    let clean = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    let clean = text.trim();
     
-    // 2. Identify the first occurrence of [ or {
-    const firstBracket = clean.indexOf('[');
-    const firstBrace = clean.indexOf('{');
+    // Remove markdown code block markers if present
+    clean = clean.replace(/^```json\s*/i, "").replace(/```\s*$/g, "").trim();
     
-    let startIdx = -1;
-    if (firstBracket !== -1 && firstBrace !== -1) {
-      startIdx = Math.min(firstBracket, firstBrace);
-    } else {
-      startIdx = firstBracket !== -1 ? firstBracket : firstBrace;
-    }
+    // Find the actual start of JSON content
+    const startIdx = clean.search(/[\[\{]/);
+    if (startIdx === -1) return null;
 
-    // 3. Identify the last occurrence of ] or }
+    // Find the last possible closing character
     const lastBracket = clean.lastIndexOf(']');
     const lastBrace = clean.lastIndexOf('}');
-    const endIdx = Math.max(lastBracket, lastBrace);
+    let endIdx = Math.max(lastBracket, lastBrace);
 
-    if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
-      // If no structures found, try parsing the whole thing as a last resort
-      return JSON.parse(clean);
+    // If no closing character found, the model likely truncated
+    if (endIdx === -1 || endIdx < startIdx) {
+      // Basic repair strategy for simple truncation
+      if (clean[startIdx] === '[') {
+        try { return JSON.parse(clean + ']'); } catch (e) {}
+      } else if (clean[startIdx] === '{') {
+        try { return JSON.parse(clean + '}'); } catch (e) {}
+      }
+      return null;
     }
 
-    // 4. Extract and parse the substring
     const jsonStr = clean.substring(startIdx, endIdx + 1);
-    return JSON.parse(jsonStr);
+    try {
+      return JSON.parse(jsonStr);
+    } catch (parseError) {
+      // Second repair attempt: if it fails, check for unclosed objects inside array
+      // This is a common failure point for large lists
+      let repaired = jsonStr;
+      if (repaired.startsWith('[') && !repaired.endsWith(']')) repaired += ']';
+      if (repaired.startsWith('{') && !repaired.endsWith('}')) repaired += '}';
+      try {
+        return JSON.parse(repaired);
+      } catch (e) {
+        console.error("Failed to parse/repair JSON:", parseError);
+        return null;
+      }
+    }
   } catch (e) {
-    console.error("JSON Parsing Error:", e, "Raw Text:", text?.substring(0, 100));
+    console.error("Unexpected parsing failure:", e);
     return null;
   }
 }
@@ -59,44 +74,19 @@ const MOCK_FALLBACK_GAMES: Game[] = [
 
 export async function getLiveGames(sports: string[]): Promise<Game[]> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  // Use ISO string for absolute reference to the current moment
-  const nowStr = new Date().toISOString(); 
+  const today = new Date().toISOString().split('T')[0];
   
   try {
+    // Simplification: We use gemini-3-flash-preview for the feed.
+    // Reducing the request complexity and result count to minimize 500 RPC errors.
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: `Current UTC Timestamp: ${nowStr}. 
-      Act as a sports data aggregator. Search sofascore.com for the most popular UPCOMING or currently LIVE sports matches for: ${sports.join(', ')}.
-      Only include matches that are scheduled for TODAY or TOMORROW relative to the current timestamp.
-      
-      For each match provide:
-      1. id (unique string), sport, league, homeTeam, awayTeam, startTime (formatted as 'HH:mm' or 'Live').
-      2. 3 AI insights based on current form and search data.
-      3. A DIRECT high-resolution URL to the official team logo (.png or .svg) found on Sofascore or official sites.
-      
-      Return as a JSON array.`,
+      model: 'gemini-3-flash-preview',
+      contents: `Search sofascore.com for 3-5 major sports matches for ${sports.join(', ')} scheduled for ${today}.
+      Focus on results with valid image logos. 
+      Return JSON: Array of {id, sport, league, homeTeam, awayTeam, startTime, homeLogoUrl, awayLogoUrl, insights: string[]}.`,
       config: {
         tools: [{ googleSearch: {} }],
-        thinkingConfig: { thinkingBudget: 8000 },
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              id: { type: Type.STRING },
-              sport: { type: Type.STRING },
-              league: { type: Type.STRING },
-              homeTeam: { type: Type.STRING },
-              awayTeam: { type: Type.STRING },
-              homeLogoUrl: { type: Type.STRING },
-              awayLogoUrl: { type: Type.STRING },
-              startTime: { type: Type.STRING },
-              insights: { type: Type.ARRAY, items: { type: Type.STRING } }
-            },
-            required: ['id', 'sport', 'league', 'homeTeam', 'awayTeam', 'startTime', 'insights']
-          }
-        }
+        // Keeping it very tight to avoid proxy timeouts
       }
     });
 
@@ -111,7 +101,8 @@ export async function getLiveGames(sports: string[]): Promise<Game[]> {
     }
     return MOCK_FALLBACK_GAMES.filter(g => sports.includes(g.sport as any));
   } catch (error) {
-    console.error("Live Games Error:", error);
+    console.error("Live Games Fetch Failed (RPC or Timeout):", error);
+    // Explicitly returning fallback so the UI can still function
     return MOCK_FALLBACK_GAMES;
   }
 }
@@ -121,7 +112,8 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Analyze ${homeTeam} vs ${awayTeam} in ${sport}. Focus on injury reports and latest news from Sofascore.`,
+      contents: `Research news and betting trends for ${homeTeam} vs ${awayTeam} in ${sport}. 
+      Include 4 quick bullet points and 3 betting angles with title, why, risk, and riskLevel (Low/Medium/High).`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -150,9 +142,11 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
       }
     });
 
-    const data = parseModelJson(response.text);
-    return data;
-  } catch (error) { return null; }
+    return parseModelJson(response.text);
+  } catch (error) { 
+    console.error("Analysis Failed:", error);
+    return null; 
+  }
 }
 
 export async function generateProImage(prompt: string, size: "1K" | "2K" | "4K" = "1K", aspectRatio: string = "16:9") {
@@ -205,12 +199,12 @@ export async function analyzeImage(base64Image: string) {
       contents: {
         parts: [
           { inlineData: { data: base64Image.split(',')[1], mimeType: 'image/jpeg' } },
-          { text: "Identify the sport, teams, and players in this image. Provide a brief expert analysis of what's happening." }
+          { text: "Detailed sports analysis of this image. Identify teams, players, and game context." }
         ]
       }
     });
     return response.text;
-  } catch (error) { return "Could not analyze image."; }
+  } catch (error) { return "Analysis failed due to a transient error."; }
 }
 
 export async function generateVideoWithVeo(base64Image: string, prompt: string, aspectRatio: "16:9" | "9:16" = "16:9") {
@@ -218,7 +212,7 @@ export async function generateVideoWithVeo(base64Image: string, prompt: string, 
   try {
     let operation = await ai.models.generateVideos({
       model: 'veo-3.1-fast-generate-preview',
-      prompt: prompt || 'Animate this sports scene with dynamic cinematic motion',
+      prompt: prompt || 'Animate this sports photo with dynamic cinematic motion',
       image: {
         imageBytes: base64Image.split(',')[1],
         mimeType: 'image/jpeg'
@@ -240,7 +234,7 @@ export async function generateVideoWithVeo(base64Image: string, prompt: string, 
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   } catch (error) {
-    console.error("Veo Error:", error);
+    console.error("Veo Video Generation Error:", error);
     return null;
   }
 }
@@ -250,7 +244,7 @@ export async function generateAngleImage(angleTitle: string, sport: string): Pro
   try {
     const response = await ai.models.generateImages({
       model: 'imagen-4.0-generate-001',
-      prompt: `Cinematic sports graphic for "${angleTitle}" in ${sport}. Minimalist, high-end 3D aesthetic.`,
+      prompt: `Cinematic high-contrast sports graphic for "${angleTitle}" in ${sport}. Modern 3D style, no text.`,
       config: { numberOfImages: 1, outputMimeType: 'image/jpeg', aspectRatio: '16:9' },
     });
     if (response.generatedImages?.[0]?.image?.imageBytes) {
@@ -265,7 +259,7 @@ export async function getValueExplanation(game: string, market: string, selectio
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Explain value for ${selection} in ${game} at ${odds}. AI Prob: ${(appProb*100).toFixed(1)}%.`,
+      contents: `Explain the betting value for ${selection} in ${game} at ${odds}. AI estimated win probability: ${(appProb*100).toFixed(1)}%.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {

@@ -198,7 +198,7 @@ const StudioPage: React.FC = () => {
                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Studio Output</span>
                  <a 
                    href={result || videoResult || '#'} 
-                   download="edgebuddy-studio" 
+                   download="pickpal-studio" 
                    className="text-blue-500 text-[10px] font-black uppercase border-b-2 border-blue-100"
                  >
                    Save to Device ↓

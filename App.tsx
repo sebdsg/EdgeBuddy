@@ -42,28 +42,28 @@ const BottomNav: React.FC = () => {
 
 const App: React.FC = () => {
   const [savedBets, setSavedBets] = useState<SavedBet[]>([]);
-  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('edgebuddy_theme') === 'dark');
+  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('pickpal_theme') === 'dark');
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('edgebuddy_theme', darkMode ? 'dark' : 'light');
+    localStorage.setItem('pickpal_theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
   useEffect(() => {
-    const stored = localStorage.getItem('edgebuddy_bets');
+    const stored = localStorage.getItem('pickpal_bets');
     if (stored) setSavedBets(JSON.parse(stored));
   }, []);
 
   const saveBet = (bet: SavedBet) => {
     const updated = [bet, ...savedBets];
     setSavedBets(updated);
-    localStorage.setItem('edgebuddy_bets', JSON.stringify(updated));
+    localStorage.setItem('pickpal_bets', JSON.stringify(updated));
   };
 
   const updateBetStatus = (id: string, status: 'Pending' | 'Won' | 'Lost') => {
     const updated = savedBets.map(b => b.id === id ? { ...b, status } : b);
     setSavedBets(updated);
-    localStorage.setItem('edgebuddy_bets', JSON.stringify(updated));
+    localStorage.setItem('pickpal_bets', JSON.stringify(updated));
   };
 
   return (
@@ -73,7 +73,7 @@ const App: React.FC = () => {
           <div className="flex items-center space-x-2">
             <span className="text-2xl">⚡</span>
             <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 uppercase tracking-tighter">
-              EdgeBuddy
+              PickPal
             </h1>
           </div>
           <div className="flex items-center space-x-3">
