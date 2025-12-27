@@ -28,14 +28,14 @@ const BottomNav: React.FC = () => {
             key={item.path}
             to={item.path}
             className={`flex-1 flex flex-col items-center justify-center transition-all relative ${
-              isActive ? 'text-blue-600 dark:text-white' : 'text-gray-500 dark:text-white'
+              isActive ? 'text-green-500 dark:text-blue-500' : 'text-white'
             }`}
           >
             <span className={`text-[12px] font-black uppercase tracking-widest transition-transform ${isActive ? 'scale-105' : 'scale-100'}`}>
               {item.label}
             </span>
             {isActive && (
-              <div className="absolute bottom-0 left-1/4 right-1/4 h-1 bg-blue-600 dark:bg-white rounded-t-full animate-fadeIn" />
+              <div className="absolute bottom-0 left-1/4 right-1/4 h-1 bg-green-500 dark:bg-blue-500 rounded-t-full animate-fadeIn" />
             )}
           </Link>
         );
@@ -72,21 +72,21 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      <div className="min-h-screen bg-[var(--app-bg)] text-[var(--text-main)] pb-24 theme-transition">
+      <div className="min-h-screen bg-[var(--app-bg)] text-white pb-24 theme-transition">
         <header className="bg-[var(--card-bg)] px-4 py-4 border-b border-[var(--border-color)] flex items-center justify-between sticky top-0 z-40 theme-transition">
           <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-white dark:to-white uppercase tracking-tighter">
+            <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-green-600 dark:from-blue-400 dark:to-blue-600 uppercase tracking-tighter">
               PickPal
             </h1>
           </div>
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 px-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-[10px] font-black uppercase text-gray-500 dark:text-white transition-all tracking-widest"
+              className="p-2 px-3 rounded-xl bg-gray-900 text-[10px] font-black uppercase text-white transition-all tracking-widest border border-[var(--border-color)]"
             >
               {darkMode ? 'Light' : 'Dark'}
             </button>
-            <button className="text-[10px] font-black uppercase text-gray-500 dark:text-white bg-gray-50 dark:bg-gray-800 p-2 px-3 rounded-xl tracking-widest">Menu</button>
+            <button className="text-[10px] font-black uppercase text-white bg-gray-900 p-2 px-3 rounded-xl tracking-widest border border-[var(--border-color)]">Menu</button>
           </div>
         </header>
 

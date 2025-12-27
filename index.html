@@ -17,6 +17,10 @@
               'slideUp': 'slideUp 0.4s ease-out',
               'popIn': 'popIn 0.5s cubic-bezier(0.26, 0.53, 0.74, 1.48) forwards',
             },
+            colors: {
+              dodgerblue: '#1e90ff',
+              grassgreen: '#2d5a27'
+            },
             keyframes: {
               progressBar: {
                 '0%': { width: '0%' },
@@ -42,21 +46,21 @@
     </script>
     <style>
       :root {
-        --app-bg: #f8fafc;
-        --card-bg: #ffffff;
-        --text-main: #000000;
-        --text-muted: #000000;
-        --border-color: #f1f5f9;
-        --nav-bg: #ffffff;
+        --app-bg: #121212; /* Charcoal Grey */
+        --card-bg: #1e1e1e; /* Slightly lighter Charcoal */
+        --text-main: #ffffff;
+        --text-muted: #ffffff;
+        --border-color: #2d5a27; /* Grass Green */
+        --nav-bg: #121212;
       }
 
       .dark {
-        --app-bg: #000000;
-        --card-bg: #111827;
+        --app-bg: #0a0a0a; /* Darker Charcoal */
+        --card-bg: #141414;
         --text-main: #ffffff;
         --text-muted: #ffffff;
-        --border-color: #1f2937;
-        --nav-bg: #111827;
+        --border-color: #1e90ff; /* Dodger Blue */
+        --nav-bg: #0a0a0a;
       }
 
       body {
@@ -69,39 +73,35 @@
 
       h1, h2, h3, h4, button, span, p, div, input, select, textarea {
         font-family: 'Times New Roman', Times, serif;
+        color: #ffffff !important; /* Force white text globally */
       }
 
       .theme-transition {
         transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
       }
 
-      /* Global override for dark mode: all text is white */
-      .dark body, 
-      .dark h1, .dark h2, .dark h3, .dark h4, 
-      .dark p, .dark span, .dark div, .dark a,
-      .dark input, .dark select, .dark textarea, .dark button {
+      /* Global override: all text is white in light and dark mode */
+      body, 
+      h1, h2, h3, h4, 
+      p, span, div, a,
+      input, select, textarea, button,
+      .text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700,
+      .text-slate-400, .text-slate-500, .text-slate-600 {
         color: #ffffff !important;
       }
 
-      /* Global override for light mode: all greyish text classes become black */
-      html:not(.dark) .text-gray-400,
-      html:not(.dark) .text-gray-500,
-      html:not(.dark) .text-gray-600,
-      html:not(.dark) .text-gray-700,
-      html:not(.dark) .text-slate-400,
-      html:not(.dark) .text-slate-500,
-      html:not(.dark) .text-slate-600 {
-        color: #000000 !important;
-      }
-
-      /* Exception for specific functional colors (like blue for links/actions) */
-      .text-blue-500, .text-blue-600, .text-green-500, .text-red-500 {
-        /* Maintain intent unless in dark mode where they might become white via the top rule */
-      }
-
-      /* Branding exception */
-      .dark .text-transparent {
+      /* Maintain visibility for transparent elements */
+      .text-transparent {
         color: transparent !important;
+      }
+
+      /* Exception for specific functional colors that need to stay bright on dark backgrounds */
+      .text-green-500, .text-red-500, .text-blue-500 {
+        /* Allowed to stay functional for status */
+      }
+      
+      .text-green-600, .text-green-400 {
+        color: #22c55e !important;
       }
     </style>
     <script type="importmap">

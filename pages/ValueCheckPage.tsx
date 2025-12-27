@@ -77,76 +77,71 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
     setLoading(false);
   };
 
-  const handleSave = () => {
-    if (!result) return;
-    const bet: SavedBet = {
-      id: Math.random().toString(36).substr(2, 9),
-      gameId: 'custom',
-      gameTitle: game,
-      market,
-      selection,
-      odds,
-      valueRating: result.rating === 'Good value' ? 'Good' : result.rating === 'Fair price' ? 'Fair' : 'Bad',
-      status: 'Pending',
-      timestamp: Date.now()
-    };
-    onSave(bet);
-    alert('Bet saved to My Bets!');
-  };
-
   const isFormValid = game && selection && odds && !oddsError && !loading;
 
   return (
-    <div className="space-y-6 pb-12 animate-fadeIn">
+    <div className="space-y-6 pb-12 animate-fadeIn text-white">
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-[var(--text-main)] dark:text-white uppercase tracking-tight">Value Check</h2>
-        <p className="text-gray-500 dark:text-white text-xs uppercase font-bold tracking-widest">AI analysis of sportsbook odds.</p>
+        <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Value Check</h2>
+        <p className="text-white opacity-60 text-xs uppercase font-bold tracking-widest">AI analysis of sportsbook odds.</p>
       </div>
 
       <div className="bg-[var(--card-bg)] rounded-3xl border border-[var(--border-color)] shadow-sm p-6 space-y-5 theme-transition">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-gray-400 dark:text-white uppercase">Sport</label>
+            <label className="text-[10px] font-bold text-green-500 dark:text-blue-500 uppercase">Sport</label>
             <select 
               value={sport} 
               onChange={(e) => setSport(e.target.value as Sport)}
-              className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3 text-sm text-[var(--text-main)] dark:text-white font-bold uppercase outline-none"
+              className="w-full bg-black/40 border border-[var(--border-color)]/30 rounded-xl p-3 text-sm text-white font-bold uppercase outline-none"
             >
-              {sports.map(s => <option key={s} value={s}>{s}</option>)}
+              {sports.map(s => <option key={s} value={s} className="bg-zinc-900">{s}</option>)}
             </select>
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-gray-400 dark:text-white uppercase">Market</label>
+            <label className="text-[10px] font-bold text-green-500 dark:text-blue-500 uppercase">Market</label>
             <select 
               value={market} 
               onChange={(e) => setMarket(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3 text-sm text-[var(--text-main)] dark:text-white font-bold uppercase outline-none"
+              className="w-full bg-black/40 border border-[var(--border-color)]/30 rounded-xl p-3 text-sm text-white font-bold uppercase outline-none"
             >
-              {markets.map(m => <option key={m} value={m}>{m}</option>)}
+              {markets.map(m => <option key={m} value={m} className="bg-zinc-900">{m}</option>)}
             </select>
           </div>
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-gray-400 dark:text-white uppercase">Game / Matchup</label>
+          <label className="text-[10px] font-bold text-green-500 dark:text-blue-500 uppercase">Game / Matchup</label>
           <input 
             type="text" 
             placeholder="e.g. Lakers vs Celtics"
             value={game}
             onChange={(e) => setGame(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3 text-sm text-[var(--text-main)] dark:text-white font-bold outline-none"
+            className="w-full bg-black/40 border border-[var(--border-color)]/30 rounded-xl p-3 text-sm text-white font-bold outline-none placeholder:opacity-30"
           />
         </div>
 
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-gray-400 dark:text-white uppercase">Your Selection</label>
+          <label className="text-[10px] font-bold text-green-500 dark:text-blue-500 uppercase">Your Selection</label>
           <input 
             type="text" 
             placeholder="e.g. Lakers +5.5 or Over 210.5"
             value={selection}
             onChange={(e) => setSelection(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 rounded-xl p-3 text-sm text-[var(--text-main)] dark:text-white font-bold outline-none"
+            className="w-full bg-black/40 border border-[var(--border-color)]/30 rounded-xl p-3 text-sm text-white font-bold outline-none placeholder:opacity-30"
           />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold text-green-500 dark:text-blue-500 uppercase">American Odds</label>
+          <input 
+            type="text" 
+            placeholder="e.g. -110 or +200"
+            value={odds}
+            onChange={handleOddsChange}
+            className={`w-full bg-black/40 border rounded-xl p-3 text-sm text-white font-bold outline-none ${oddsError ? 'border-red-500' : 'border-[var(--border-color)]/30'}`}
+          />
+          {oddsError && <p className="text-[8px] text-red-500 font-bold uppercase mt-1">{oddsError}</p>}
         </div>
 
         <button 
@@ -154,8 +149,8 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
           disabled={!isFormValid}
           className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all ${
             !isFormValid
-              ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-white cursor-not-allowed' 
-              : 'bg-blue-600 text-white dark:text-white hover:bg-blue-700 active:scale-95'
+              ? 'bg-zinc-800 text-white/30 cursor-not-allowed border border-white/5' 
+              : 'bg-green-600 dark:bg-blue-600 text-white hover:opacity-90 active:scale-95'
           }`}
         >
           {loading ? 'Analyzing...' : 'Check My Bet'}
@@ -165,25 +160,22 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
       {result && (
         <div className="space-y-6 animate-slideUp">
           <div className={`animate-popIn rounded-3xl p-6 text-center space-y-2 border-2 shadow-sm ${
-            result.rating === 'Good value' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
-            result.rating === 'Fair price' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+            result.rating === 'Good value' ? 'bg-green-900/20 border-green-500/50 dark:bg-blue-900/20 dark:border-blue-500/50' :
+            result.rating === 'Fair price' ? 'bg-zinc-900 border-zinc-700' : 'bg-red-900/20 border-red-500/50'
           }`}>
-            <h3 className={`text-3xl font-black uppercase tracking-tight ${
-              result.rating === 'Good value' ? 'text-green-700 dark:text-white' :
-              result.rating === 'Fair price' ? 'text-orange-700 dark:text-white' : 'text-red-700 dark:text-white'
-            }`}>
+            <h3 className={`text-3xl font-black uppercase tracking-tight text-white`}>
               {result.rating}
             </h3>
-            <p className="text-[10px] opacity-70 font-black uppercase tracking-widest dark:text-white">AI-Powered Verdict</p>
+            <p className="text-[10px] opacity-70 font-black uppercase tracking-widest">AI-Powered Verdict</p>
           </div>
 
           <section className="space-y-3">
-            <h4 className="font-black text-xs uppercase tracking-widest dark:text-white ml-1">AI Reasoning</h4>
+            <h4 className="font-black text-xs uppercase tracking-widest ml-1 text-green-500 dark:text-blue-500">AI Reasoning</h4>
             <div className="bg-[var(--card-bg)] rounded-2xl p-5 border border-[var(--border-color)] shadow-sm space-y-4">
               {result.explanation.map((p, i) => (
-                <div key={i} className="flex items-start space-x-3 text-sm dark:text-white">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0"></span>
-                  <p className="leading-relaxed dark:text-white">{p}</p>
+                <div key={i} className="flex items-start space-x-3 text-sm text-white">
+                  <span className="w-2 h-2 rounded-full bg-green-500 dark:bg-blue-500 mt-1.5 shrink-0"></span>
+                  <p className="leading-relaxed opacity-90">{p}</p>
                 </div>
               ))}
             </div>
