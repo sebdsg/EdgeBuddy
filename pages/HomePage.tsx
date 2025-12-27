@@ -56,17 +56,6 @@ const HomePage: React.FC = () => {
     setSelectedSports(prev => prev.includes(sport) ? prev.filter(s => s !== sport) : [...prev, sport]);
   };
 
-  const getSportShort = (sport: Sport) => {
-    switch (sport) {
-      case 'Soccer': return 'SOC';
-      case 'Basketball': return 'BKN';
-      case 'Football': return 'FB';
-      case 'Hockey': return 'HKY';
-      case 'Baseball': return 'BSB';
-      default: return 'SPT';
-    }
-  };
-
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="space-y-3">
@@ -78,12 +67,15 @@ const HomePage: React.FC = () => {
               <button
                 key={sport}
                 onClick={() => toggleSport(sport)}
-                className={`flex flex-col items-center justify-center min-w-[5rem] h-20 rounded-2xl border-2 transition-all ${
-                  isActive ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-[var(--card-bg)] border-[var(--border-color)] text-gray-500 dark:text-white'
+                className={`flex flex-col items-center justify-center min-w-[6rem] h-14 rounded-2xl border-2 transition-all px-4 ${
+                  isActive 
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg' 
+                    : 'bg-[var(--card-bg)] border-[var(--border-color)] text-[var(--text-main)] dark:text-white'
                 }`}
               >
-                <span className="text-lg mb-1 font-black dark:text-white">{getSportShort(sport)}</span>
-                <span className="text-[10px] font-bold uppercase dark:text-white">{sport}</span>
+                <span className={`text-[12px] font-black uppercase tracking-wider text-center ${isActive ? 'text-white' : 'text-[var(--text-main)] dark:text-white'}`}>
+                  {sport}
+                </span>
               </button>
             );
           })}
