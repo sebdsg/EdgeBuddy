@@ -4,6 +4,31 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { getGameAnalysis, generateAngleImage } from '../services/geminiService';
 import { BettingAngle, GroundingSource, Game } from '../types';
 
+const FavoriteStar: React.FC<{ isFavorite: boolean; onToggle: () => void }> = ({ isFavorite, onToggle }) => (
+  <button 
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onToggle();
+    }}
+    className="focus:outline-none p-1 transition-transform active:scale-125"
+  >
+    <svg 
+      className={`w-5 h-5 ${isFavorite ? 'text-yellow-400 fill-current' : 'text-white/20'}`} 
+      fill="none" 
+      stroke="currentColor" 
+      viewBox="0 0 24 24"
+    >
+      <path 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        strokeWidth="2.5" 
+        d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.921-.755 1.688-1.54 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.784.57-1.838-.197-1.539-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" 
+      />
+    </svg>
+  </button>
+);
+
 const TeamCrestLarge: React.FC<{ name: string; logoUrl?: string }> = ({ name, logoUrl }) => {
   const [imgError, setImgError] = useState(false);
   const initials = (name || "T").split(' ').map(n => n[0]).join('').substring(0, 2);
@@ -29,7 +54,12 @@ const TeamCrestLarge: React.FC<{ name: string; logoUrl?: string }> = ({ name, lo
   );
 };
 
-const GameDetailPage: React.FC = () => {
+interface GameDetailPageProps {
+  favorites: string[];
+  toggleFavorite: (name: string) => void;
+}
+
+const GameDetailPage: React.FC<GameDetailPageProps> = ({ favorites, toggleFavorite }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -75,6 +105,9 @@ const GameDetailPage: React.FC = () => {
 
   if (!game) return <div className="p-8 text-center text-white"><Link to="/" className="text-green-500 dark:text-blue-500 uppercase font-black text-xs tracking-widest">Game not found. Go back home.</Link></div>;
 
+  const isHomeFavorite = favorites.includes(game.homeTeam);
+  const isAwayFavorite = favorites.includes(game.awayTeam);
+
   return (
     <div className="space-y-6 pb-12 animate-fadeIn">
       <Link to="/" className="text-green-500 dark:text-blue-500 text-[10px] font-black uppercase tracking-widest">Back to Feed</Link>
@@ -84,9 +117,12 @@ const GameDetailPage: React.FC = () => {
         <div className="space-y-6 relative z-10">
           <div className="text-center text-xs font-black uppercase tracking-[0.2em] opacity-60">{game.league} Matchup</div>
           <div className="flex items-center justify-between px-2">
-            <div className="flex flex-col items-center space-y-3 w-1/3">
+            <div className="flex flex-col items-center space-y-3 w-1/3 relative">
               <TeamCrestLarge name={game.homeTeam} logoUrl={game.homeLogoUrl} />
-              <span className="font-bold text-xs text-center">{game.homeTeam}</span>
+              <div className="flex items-center space-x-1">
+                <span className={`font-bold text-xs text-center ${isHomeFavorite ? 'text-yellow-400' : ''}`}>{game.homeTeam}</span>
+                <FavoriteStar isFavorite={isHomeFavorite} onToggle={() => toggleFavorite(game.homeTeam)} />
+              </div>
             </div>
             <div className="flex flex-col items-center w-1/3">
               <span className="text-2xl font-black italic opacity-20">VS</span>
@@ -94,9 +130,12 @@ const GameDetailPage: React.FC = () => {
                 {formatMatchTimeLabel(game.startTime)}
               </span>
             </div>
-            <div className="flex flex-col items-center space-y-3 w-1/3">
+            <div className="flex flex-col items-center space-y-3 w-1/3 relative">
               <TeamCrestLarge name={game.awayTeam} logoUrl={game.awayLogoUrl} />
-              <span className="font-bold text-xs text-center">{game.awayTeam}</span>
+              <div className="flex items-center space-x-1">
+                <span className={`font-bold text-xs text-center ${isAwayFavorite ? 'text-yellow-400' : ''}`}>{game.awayTeam}</span>
+                <FavoriteStar isFavorite={isAwayFavorite} onToggle={() => toggleFavorite(game.awayTeam)} />
+              </div>
             </div>
           </div>
         </div>

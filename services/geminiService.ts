@@ -77,8 +77,6 @@ export async function getLiveGames(sports: string[]): Promise<Game[]> {
   const today = new Date().toISOString().split('T')[0];
   
   try {
-    // Simplification: We use gemini-3-flash-preview for the feed.
-    // Reducing the request complexity and result count to minimize 500 RPC errors.
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Search sofascore.com for 3-5 major sports matches for ${sports.join(', ')} scheduled for ${today}.
@@ -86,7 +84,6 @@ export async function getLiveGames(sports: string[]): Promise<Game[]> {
       Return JSON: Array of {id, sport, league, homeTeam, awayTeam, startTime, homeLogoUrl, awayLogoUrl, insights: string[]}.`,
       config: {
         tools: [{ googleSearch: {} }],
-        // Keeping it very tight to avoid proxy timeouts
       }
     });
 
@@ -101,8 +98,7 @@ export async function getLiveGames(sports: string[]): Promise<Game[]> {
     }
     return MOCK_FALLBACK_GAMES.filter(g => sports.includes(g.sport as any));
   } catch (error) {
-    console.error("Live Games Fetch Failed (RPC or Timeout):", error);
-    // Explicitly returning fallback so the UI can still function
+    console.error("Live Games Fetch Failed:", error);
     return MOCK_FALLBACK_GAMES;
   }
 }
@@ -146,6 +142,26 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
   } catch (error) { 
     console.error("Analysis Failed:", error);
     return null; 
+  }
+}
+
+export async function getPlayerStats(playerName: string, sport: string) {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Search sofascore.com for the 2025/2026 season statistics of the athlete ${playerName} in ${sport}.
+      Identify key performance indicators (like goals, assists, PPG, home runs, etc.) relevant to their sport.
+      Return ONLY a JSON object of key-value pairs where keys are the metric names and values are the values found.
+      Example: {"Goals": 10, "Assists": 5}.`,
+      config: {
+        tools: [{ googleSearch: {} }],
+      }
+    });
+    return parseModelJson(response.text);
+  } catch (error) {
+    console.error("Player Stats Fetch Failed:", error);
+    return null;
   }
 }
 

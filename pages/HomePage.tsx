@@ -4,14 +4,14 @@ import { Link } from 'react-router-dom';
 import { Sport, Game } from '../types';
 import { getLiveGames } from '../services/geminiService';
 
-const TeamCrest: React.FC<{ name: string; logoUrl?: string; size?: string }> = ({ name, logoUrl, size = "w-6 h-6" }) => {
+const TeamCrest: React.FC<{ name: string; logoUrl?: string; size?: string; isFavorite?: boolean }> = ({ name, logoUrl, size = "w-6 h-6", isFavorite }) => {
   const [imgError, setImgError] = useState(false);
   const initials = (name || "T").split(' ').map(n => n[0]).join('').substring(0, 2);
-  const bgColor = (name || "").length % 2 === 0 ? 'bg-green-700 dark:bg-blue-700' : 'bg-green-800 dark:bg-blue-800';
+  const bgColor = isFavorite ? 'bg-yellow-600' : ((name || "").length % 2 === 0 ? 'bg-green-700 dark:bg-blue-700' : 'bg-green-800 dark:bg-blue-800');
 
   if (logoUrl && logoUrl.trim() !== '' && !imgError) {
     return (
-      <div className={`${size} shrink-0 bg-white rounded-full p-0.5 border border-gray-800 shadow-sm overflow-hidden flex items-center justify-center`}>
+      <div className={`${size} shrink-0 bg-white rounded-full p-0.5 border ${isFavorite ? 'border-yellow-400' : 'border-gray-800'} shadow-sm overflow-hidden flex items-center justify-center`}>
         <img 
           src={logoUrl} 
           alt={name} 
@@ -23,17 +23,29 @@ const TeamCrest: React.FC<{ name: string; logoUrl?: string; size?: string }> = (
   }
 
   return (
-    <div className={`${size} ${bgColor} rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 border border-white/20`}>
+    <div className={`${size} ${bgColor} rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm shrink-0 border ${isFavorite ? 'border-yellow-400' : 'border-white/20'}`}>
       {initials}
     </div>
   );
 };
 
-const HomePage: React.FC = () => {
+interface HomePageProps {
+  favorites: string[];
+}
+
+const HomePage: React.FC<HomePageProps> = ({ favorites }) => {
   const [selectedSports, setSelectedSports] = useState<Sport[]>(['Soccer', 'Basketball']);
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const sports: Sport[] = ['Soccer', 'Basketball', 'Football', 'Hockey', 'Baseball'];
+
+  const sportLabels: Record<Sport, string> = {
+    Soccer: 'Soccer',
+    Basketball: 'NBA',
+    Football: 'NFL',
+    Hockey: 'NHL',
+    Baseball: 'MLB'
+  };
 
   const fetchGames = async () => {
     setLoading(true);
@@ -88,7 +100,7 @@ const HomePage: React.FC = () => {
                 }`}
               >
                 <span className="text-[12px] font-black uppercase tracking-wider text-center text-white">
-                  {sport}
+                  {sportLabels[sport]}
                 </span>
               </button>
             );
@@ -114,48 +126,55 @@ const HomePage: React.FC = () => {
           </div>
         ) : games.length > 0 ? (
           <div className="grid gap-4">
-            {games.map((game) => (
-              <div key={game.id} className="bg-[var(--card-bg)] rounded-3xl shadow-sm border border-[var(--border-color)] p-5 space-y-4 theme-transition animate-slideUp">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <div className="text-xs text-white opacity-60 font-bold uppercase">
-                        {formatMatchDisplay(game.league, game.startTime)}
+            {games.map((game) => {
+              const homeFav = favorites.includes(game.homeTeam);
+              const awayFav = favorites.includes(game.awayTeam);
+              const hasFav = homeFav || awayFav;
+
+              return (
+                <div key={game.id} className={`bg-[var(--card-bg)] rounded-3xl shadow-sm border ${hasFav ? 'border-yellow-500/50 shadow-yellow-500/10' : 'border-[var(--border-color)]'} p-5 space-y-4 theme-transition animate-slideUp relative overflow-hidden`}>
+                  {hasFav && <div className="absolute top-0 right-0 w-16 h-16 bg-yellow-400/5 rounded-full blur-2xl -translate-y-8 translate-x-8" />}
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="text-xs text-white opacity-60 font-bold uppercase">
+                          {formatMatchDisplay(game.league, game.startTime)}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-lg font-bold text-white pt-1">
-                      <div className="flex items-center space-x-3">
-                        <TeamCrest name={game.homeTeam} logoUrl={game.homeLogoUrl} />
-                        <span>{game.homeTeam}</span>
-                      </div>
-                      <div className="pl-4 text-white opacity-40 text-xs py-0.5 italic lowercase">vs</div>
-                      <div className="flex items-center space-x-3">
-                        <TeamCrest name={game.awayTeam} logoUrl={game.awayLogoUrl} />
-                        <span>{game.awayTeam}</span>
+                      <div className="text-lg font-bold text-white pt-1">
+                        <div className="flex items-center space-x-3">
+                          <TeamCrest name={game.homeTeam} logoUrl={game.homeLogoUrl} isFavorite={homeFav} />
+                          <span className={`${homeFav ? 'text-yellow-400' : ''}`}>{game.homeTeam} {homeFav && '★'}</span>
+                        </div>
+                        <div className="pl-4 text-white opacity-40 text-xs py-0.5 italic lowercase">vs</div>
+                        <div className="flex items-center space-x-3">
+                          <TeamCrest name={game.awayTeam} logoUrl={game.awayLogoUrl} isFavorite={awayFav} />
+                          <span className={`${awayFav ? 'text-yellow-400' : ''}`}>{game.awayTeam} {awayFav && '★'}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-2 bg-black/30 p-3 rounded-2xl border border-[var(--border-color)]/30">
-                  <div className="text-[10px] font-bold text-green-500 dark:text-blue-500 uppercase mb-1 px-1">AI Intel</div>
-                  {game.insights?.map((insight, idx) => (
-                    <div key={idx} className="flex items-center space-x-2 text-xs text-white">
-                      <span className="w-1 h-1 rounded-full bg-green-500 dark:bg-blue-500 shrink-0"></span>
-                      <span>{insight}</span>
-                    </div>
-                  ))}
-                </div>
+                  <div className="space-y-2 bg-black/30 p-3 rounded-2xl border border-[var(--border-color)]/30">
+                    <div className="text-[10px] font-bold text-green-500 dark:text-blue-500 uppercase mb-1 px-1">AI Intel</div>
+                    {game.insights?.map((insight, idx) => (
+                      <div key={idx} className="flex items-center space-x-2 text-xs text-white">
+                        <span className="w-1 h-1 rounded-full bg-green-500 dark:bg-blue-500 shrink-0"></span>
+                        <span>{insight}</span>
+                      </div>
+                    ))}
+                  </div>
 
-                <Link 
-                  to={`/game/${game.id}`}
-                  state={{ game }}
-                  className="block w-full text-center py-3.5 bg-green-600 dark:bg-blue-600 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-md active:scale-95 transition-transform"
-                >
-                  Analyze Value
-                </Link>
-              </div>
-            ))}
+                  <Link 
+                    to={`/game/${game.id}`}
+                    state={{ game }}
+                    className={`block w-full text-center py-3.5 ${hasFav ? 'bg-yellow-600' : 'bg-green-600 dark:bg-blue-600'} text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-md active:scale-95 transition-transform`}
+                  >
+                    Analyze Value
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-20 bg-[var(--card-bg)] rounded-3xl border-2 border-dashed border-[var(--border-color)] space-y-4">
