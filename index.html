@@ -6,9 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PickPal - Smart Betting Helper</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
@@ -47,35 +44,64 @@
       :root {
         --app-bg: #f8fafc;
         --card-bg: #ffffff;
-        --text-main: #1e293b;
-        --text-muted: #64748b;
+        --text-main: #000000;
+        --text-muted: #000000;
         --border-color: #f1f5f9;
         --nav-bg: #ffffff;
       }
 
       .dark {
-        --app-bg: #0f172a;
-        --card-bg: #1e293b;
-        --text-main: #f8fafc;
-        --text-muted: #94a3b8;
-        --border-color: #334155;
-        --nav-bg: #1e293b;
+        --app-bg: #000000;
+        --card-bg: #111827;
+        --text-main: #ffffff;
+        --text-muted: #ffffff;
+        --border-color: #1f2937;
+        --nav-bg: #111827;
       }
 
       body {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Times New Roman', Times, serif;
         background-color: var(--app-bg);
         color: var(--text-main);
         transition: background-color 0.3s ease, color 0.3s ease;
         -webkit-tap-highlight-color: transparent;
       }
 
-      h1, h2, h3 {
-        font-family: 'Rubik', sans-serif;
+      h1, h2, h3, h4, button, span, p, div, input, select, textarea {
+        font-family: 'Times New Roman', Times, serif;
       }
 
       .theme-transition {
         transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+      }
+
+      /* Global override for dark mode: all text is white */
+      .dark body, 
+      .dark h1, .dark h2, .dark h3, .dark h4, 
+      .dark p, .dark span, .dark div, .dark a,
+      .dark input, .dark select, .dark textarea, .dark button {
+        color: #ffffff !important;
+      }
+
+      /* Global override for light mode: all greyish text classes become black */
+      html:not(.dark) .text-gray-400,
+      html:not(.dark) .text-gray-500,
+      html:not(.dark) .text-gray-600,
+      html:not(.dark) .text-gray-700,
+      html:not(.dark) .text-slate-400,
+      html:not(.dark) .text-slate-500,
+      html:not(.dark) .text-slate-600 {
+        color: #000000 !important;
+      }
+
+      /* Exception for specific functional colors (like blue for links/actions) */
+      .text-blue-500, .text-blue-600, .text-green-500, .text-red-500 {
+        /* Maintain intent unless in dark mode where they might become white via the top rule */
+      }
+
+      /* Branding exception */
+      .dark .text-transparent {
+        color: transparent !important;
       }
     </style>
     <script type="importmap">

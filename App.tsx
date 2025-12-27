@@ -12,27 +12,31 @@ import { SavedBet } from './types';
 const BottomNav: React.FC = () => {
   const location = useLocation();
   const navItems = [
-    { path: '/', label: 'Feed', icon: '🏠' },
-    { path: '/value-check', label: 'Check', icon: '⚖️' },
-    { path: '/studio', label: 'Studio', icon: '✨' },
-    { path: '/my-bets', label: 'Bets', icon: '📋' },
-    { path: '/learn', label: 'Learn', icon: '📖' },
+    { path: '/', label: 'Feed' },
+    { path: '/value-check', label: 'Check' },
+    { path: '/studio', label: 'Studio' },
+    { path: '/my-bets', label: 'Bets' },
+    { path: '/learn', label: 'Learn' },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[var(--nav-bg)] border-t border-[var(--border-color)] px-4 py-3 flex justify-between items-center z-50 theme-transition">
+    <nav className="fixed bottom-0 left-0 right-0 bg-[var(--nav-bg)] border-t border-[var(--border-color)] px-2 flex justify-between items-stretch h-16 z-50 theme-transition shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path || (item.path === '/' && location.pathname.startsWith('/game/'));
         return (
           <Link
             key={item.path}
             to={item.path}
-            className={`flex flex-col items-center space-y-1 transition-colors ${
-              isActive ? 'text-blue-500' : 'text-gray-400 dark:text-gray-500'
+            className={`flex-1 flex flex-col items-center justify-center transition-all relative ${
+              isActive ? 'text-blue-600 dark:text-white' : 'text-gray-500 dark:text-white'
             }`}
           >
-            <span className="text-xl">{item.icon}</span>
-            <span className="text-[10px] font-bold uppercase">{item.label}</span>
+            <span className={`text-[12px] font-black uppercase tracking-widest transition-transform ${isActive ? 'scale-105' : 'scale-100'}`}>
+              {item.label}
+            </span>
+            {isActive && (
+              <div className="absolute bottom-0 left-1/4 right-1/4 h-1 bg-blue-600 dark:bg-white rounded-t-full animate-fadeIn" />
+            )}
           </Link>
         );
       })}
@@ -71,19 +75,18 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-[var(--app-bg)] text-[var(--text-main)] pb-24 theme-transition">
         <header className="bg-[var(--card-bg)] px-4 py-4 border-b border-[var(--border-color)] flex items-center justify-between sticky top-0 z-40 theme-transition">
           <div className="flex items-center space-x-2">
-            <span className="text-2xl">⚡</span>
-            <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 uppercase tracking-tighter">
+            <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-white dark:to-white uppercase tracking-tighter">
               PickPal
             </h1>
           </div>
           <div className="flex items-center space-x-3">
             <button 
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 transition-all"
+              className="p-2 px-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-[10px] font-black uppercase text-gray-500 dark:text-white transition-all tracking-widest"
             >
-              {darkMode ? '☀️' : '🌙'}
+              {darkMode ? 'Light' : 'Dark'}
             </button>
-            <button className="text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded-xl">⚙️</button>
+            <button className="text-[10px] font-black uppercase text-gray-500 dark:text-white bg-gray-50 dark:bg-gray-800 p-2 px-3 rounded-xl tracking-widest">Menu</button>
           </div>
         </header>
 

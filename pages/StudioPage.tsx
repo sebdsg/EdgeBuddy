@@ -105,7 +105,7 @@ const StudioPage: React.FC = () => {
               activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-500'
             }`}
           >
-            {tab === 'generate' ? '🎨 Create' : tab === 'edit' ? '✏️ Edit' : tab === 'animate' ? '🎬 Animate' : '🔍 Analyze'}
+            {tab === 'generate' ? 'Create' : tab === 'edit' ? 'Edit' : tab === 'animate' ? 'Animate' : 'Analyze'}
           </button>
         ))}
       </div>
@@ -120,7 +120,6 @@ const StudioPage: React.FC = () => {
               <img src={sourceImage} className="w-full h-full object-cover" />
             ) : (
               <div className="text-center space-y-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                <div className="text-4xl">📸</div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Upload Reference</p>
               </div>
             )}
@@ -130,7 +129,7 @@ const StudioPage: React.FC = () => {
 
         <div className="space-y-1">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
-            {activeTab === 'analyze' ? 'Instructions (Optional)' : 'Prompt / Description'}
+            {activeTab === 'analyze' ? 'Instructions' : 'Prompt'}
           </label>
           <textarea 
             placeholder={
@@ -140,7 +139,7 @@ const StudioPage: React.FC = () => {
             }
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl text-sm border border-gray-100 dark:border-gray-800 focus:ring-2 focus:ring-blue-500 outline-none h-24 theme-transition"
+            className="w-full bg-gray-50 dark:bg-gray-900/50 p-4 rounded-2xl text-sm border border-gray-100 dark:border-gray-800 focus:ring-2 focus:ring-blue-500 outline-none h-24 theme-transition uppercase font-bold"
           />
         </div>
 
@@ -148,7 +147,7 @@ const StudioPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Resolution</label>
-              <select value={size} onChange={(e) => setSize(e.target.value as any)} className="w-full bg-gray-50 dark:bg-gray-900 p-3 rounded-xl text-xs border border-gray-100 dark:border-gray-800 outline-none">
+              <select value={size} onChange={(e) => setSize(e.target.value as any)} className="w-full bg-gray-50 dark:bg-gray-900 p-3 rounded-xl text-xs border border-gray-100 dark:border-gray-800 outline-none font-bold uppercase">
                 <option value="1K">1K Standard</option>
                 <option value="2K">2K High Def</option>
                 <option value="4K">4K Cinematic</option>
@@ -156,7 +155,7 @@ const StudioPage: React.FC = () => {
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Aspect Ratio</label>
-              <select value={ratio} onChange={(e) => setRatio(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 p-3 rounded-xl text-xs border border-gray-100 dark:border-gray-800 outline-none">
+              <select value={ratio} onChange={(e) => setRatio(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 p-3 rounded-xl text-xs border border-gray-100 dark:border-gray-800 outline-none font-bold uppercase">
                 {aspectRatios.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
@@ -199,9 +198,9 @@ const StudioPage: React.FC = () => {
                  <a 
                    href={result || videoResult || '#'} 
                    download="pickpal-studio" 
-                   className="text-blue-500 text-[10px] font-black uppercase border-b-2 border-blue-100"
+                   className="text-blue-500 text-[10px] font-black uppercase border-b-2 border-blue-100 tracking-widest"
                  >
-                   Save to Device ↓
+                   Save to Device
                  </a>
                </div>
              )}
