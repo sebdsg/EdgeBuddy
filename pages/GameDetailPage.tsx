@@ -59,6 +59,23 @@ const GameDetailPage: React.FC = () => {
     }
   }, [game]);
 
+  const formatMatchTimeLabel = (startTime: string) => {
+    const date = new Date(startTime);
+    if (isNaN(date.getTime())) return startTime;
+
+    const now = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(now.getDate() + 1);
+
+    let day = "";
+    if (date.toDateString() === now.toDateString()) day = "Today";
+    else if (date.toDateString() === tomorrow.toDateString()) day = "Tomorrow";
+    else day = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${day} - ${time}`;
+  };
+
   if (!game) return <div className="p-8 text-center"><Link to="/" className="text-blue-500 dark:text-white uppercase font-black text-xs tracking-widest">Game not found. Go back home.</Link></div>;
 
   return (
@@ -68,7 +85,7 @@ const GameDetailPage: React.FC = () => {
       <div className="bg-gradient-to-br from-blue-700 to-indigo-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16" />
         <div className="space-y-6 relative z-10">
-          <div className="text-center text-[10px] font-black uppercase tracking-[0.2em] opacity-60 dark:text-white">{game.league} Matchup</div>
+          <div className="text-center text-xs font-black uppercase tracking-[0.2em] opacity-60 dark:text-white">{game.league} Matchup</div>
           <div className="flex items-center justify-between px-2">
             <div className="flex flex-col items-center space-y-3 w-1/3">
               <TeamCrestLarge name={game.homeTeam} logoUrl={game.homeLogoUrl} />
@@ -76,7 +93,9 @@ const GameDetailPage: React.FC = () => {
             </div>
             <div className="flex flex-col items-center w-1/3">
               <span className="text-2xl font-black italic opacity-20 dark:text-white">VS</span>
-              <span className="text-[10px] bg-white/10 px-3 py-1 rounded-full font-bold mt-2 uppercase dark:text-white">{game.startTime}</span>
+              <span className="text-xs bg-white/10 px-3 py-2 rounded-full font-bold mt-2 uppercase dark:text-white whitespace-nowrap">
+                {formatMatchTimeLabel(game.startTime)}
+              </span>
             </div>
             <div className="flex flex-col items-center space-y-3 w-1/3">
               <TeamCrestLarge name={game.awayTeam} logoUrl={game.awayLogoUrl} />

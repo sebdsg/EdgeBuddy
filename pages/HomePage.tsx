@@ -56,6 +56,30 @@ const HomePage: React.FC = () => {
     setSelectedSports(prev => prev.includes(sport) ? prev.filter(s => s !== sport) : [...prev, sport]);
   };
 
+  const formatMatchDisplay = (league: string, startTime: string) => {
+    const date = new Date(startTime);
+    // Handle mock data or invalid dates
+    if (isNaN(date.getTime())) {
+      return `${league} - ${startTime}`;
+    }
+
+    const now = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(now.getDate() + 1);
+
+    let dayLabel = "";
+    if (date.toDateString() === now.toDateString()) {
+      dayLabel = "Today";
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      dayLabel = "Tomorrow";
+    } else {
+      dayLabel = date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+
+    const timeLabel = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${league} - ${dayLabel} - ${timeLabel}`;
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="space-y-3">
@@ -105,7 +129,9 @@ const HomePage: React.FC = () => {
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
-                      <div className="text-[10px] text-gray-400 dark:text-white font-bold uppercase">{game.league} • {game.startTime}</div>
+                      <div className="text-xs text-gray-400 dark:text-white font-bold uppercase">
+                        {formatMatchDisplay(game.league, game.startTime)}
+                      </div>
                     </div>
                     <div className="text-lg font-bold text-[var(--text-main)] dark:text-white pt-1">
                       <div className="flex items-center space-x-3">
