@@ -57,6 +57,7 @@ export interface BettingAngle {
   riskLevel: 'Low' | 'Medium' | 'High';
   market: string;
   selection: string;
+  confidence: number;
 }
 
 export interface SavedBet {

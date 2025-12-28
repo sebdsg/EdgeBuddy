@@ -4,30 +4,19 @@ import { Game } from "../types";
 
 /**
  * Advanced JSON extraction helper.
- * 1. Cleans markdown markers.
- * 2. Locates the first balanced JSON structure.
- * 3. Attempts to repair common truncation (missing closing brackets).
  */
 function parseModelJson(text: string | undefined) {
   if (!text) return null;
   try {
     let clean = text.trim();
-    
-    // Remove markdown code block markers if present
     clean = clean.replace(/^```json\s*/i, "").replace(/```\s*$/g, "").trim();
-    
-    // Find the actual start of JSON content
     const startIdx = clean.search(/[\[\{]/);
     if (startIdx === -1) return null;
-
-    // Find the last possible closing character
     const lastBracket = clean.lastIndexOf(']');
     const lastBrace = clean.lastIndexOf('}');
     let endIdx = Math.max(lastBracket, lastBrace);
 
-    // If no closing character found, the model likely truncated
     if (endIdx === -1 || endIdx < startIdx) {
-      // Basic repair strategy for simple truncation
       if (clean[startIdx] === '[') {
         try { return JSON.parse(clean + ']'); } catch (e) {}
       } else if (clean[startIdx] === '{') {
@@ -40,8 +29,6 @@ function parseModelJson(text: string | undefined) {
     try {
       return JSON.parse(jsonStr);
     } catch (parseError) {
-      // Second repair attempt: if it fails, check for unclosed objects inside array
-      // This is a common failure point for large lists
       let repaired = jsonStr;
       if (repaired.startsWith('[') && !repaired.endsWith(']')) repaired += ']';
       if (repaired.startsWith('{') && !repaired.endsWith('}')) repaired += '}';
@@ -69,6 +56,17 @@ const MOCK_FALLBACK_GAMES: Game[] = [
     awayLogoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/56/Real_Madrid_CF.svg/1200px-Real_Madrid_CF.svg.png',
     startTime: 'Today, 21:00',
     insights: ['High defensive block expected', 'Kane in scoring form', 'History favors the visitors']
+  },
+  {
+    id: 'f2',
+    sport: 'Soccer',
+    league: 'Championship',
+    homeTeam: 'Sunderland',
+    awayTeam: 'Leeds United',
+    homeLogoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/7/77/Sunderland_AFC_logo.svg/1200px-Sunderland_AFC_logo.svg.png',
+    awayLogoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/54/Leeds_United_F.C._logo.svg/1200px-Leeds_United_F.C._logo.svg.png',
+    startTime: 'Today, 19:45',
+    insights: ['High-stakes promotion battle', 'Leeds dominant in possession', 'Sunderland counter-attack threat']
   }
 ];
 
@@ -79,8 +77,9 @@ export async function getLiveGames(sports: string[]): Promise<Game[]> {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Search sofascore.com and official league sites for 3-5 major sports matches for ${sports.join(', ')} scheduled for ${today}.
-      CRITICAL: For 'homeLogoUrl' and 'awayLogoUrl', you must provide high-quality URLs to the OFFICIAL team crests (preferably transparent PNGs from Wikipedia Commons or official team sites). Do not provide generic sports icons or placeholder images.
+      contents: `Search sofascore.com, flashscore.com, and official league sites for 6-10 high-interest matches for ${sports.join(', ')} scheduled for ${today}. 
+      CRITICAL: Include top-tier leagues (EPL, NBA, NFL) AND high-interest competitive leagues like EFL Championship (e.g., Sunderland vs Leeds), Eredivisie, or Liga MX if matches are happening today.
+      For 'homeLogoUrl' and 'awayLogoUrl', provide high-quality URLs to official crests.
       Return JSON: Array of {id, sport, league, homeTeam, awayTeam, startTime, homeLogoUrl, awayLogoUrl, insights: string[]}.`,
       config: {
         tools: [{ googleSearch: {} }],
@@ -109,7 +108,8 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Research news and betting trends for ${homeTeam} vs ${awayTeam} in ${sport}. 
-      Include 4 quick bullet points and 3 betting angles with title, why, risk, and riskLevel (Low/Medium/High).`,
+      Include 4 quick bullet points and 3 betting angles. 
+      For each angle, include: title, why, risk, riskLevel (Low/Medium/High), and confidence (an integer 0-100 representing how confident the AI is in this angle based on data).`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
@@ -126,10 +126,11 @@ export async function getGameAnalysis(homeTeam: string, awayTeam: string, sport:
                   why: { type: Type.STRING },
                   risk: { type: Type.STRING },
                   riskLevel: { type: Type.STRING },
+                  confidence: { type: Type.INTEGER },
                   market: { type: Type.STRING },
                   selection: { type: Type.STRING }
                 },
-                required: ['title', 'why', 'risk', 'riskLevel', 'market', 'selection']
+                required: ['title', 'why', 'risk', 'riskLevel', 'confidence', 'market', 'selection']
               }
             }
           },
@@ -151,9 +152,8 @@ export async function getPlayerStats(playerName: string, sport: string) {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Search sofascore.com for the 2025/2026 season statistics of the athlete ${playerName} in ${sport}.
-      Identify key performance indicators (like goals, assists, PPG, home runs, etc.) relevant to their sport.
-      Return ONLY a JSON object of key-value pairs where keys are the metric names and values are the values found.
-      Example: {"Goals": 10, "Assists": 5}.`,
+      Identify key performance indicators relevant to their sport.
+      Return ONLY a JSON object of key-value pairs.`,
       config: {
         tools: [{ googleSearch: {} }],
       }

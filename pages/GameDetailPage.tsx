@@ -158,7 +158,7 @@ const GameDetailPage: React.FC<GameDetailPageProps> = ({ favorites, toggleFavori
 
           <button 
             onClick={handleTrackValue}
-            className="w-full py-4 mt-4 bg-green-500 dark:bg-blue-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-transform"
+            className="w-full py-4 mt-4 bg-green-600 dark:bg-blue-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-transform"
           >
             Check Value & Track
           </button>
@@ -168,7 +168,7 @@ const GameDetailPage: React.FC<GameDetailPageProps> = ({ favorites, toggleFavori
       {loading ? (
         <div className="py-24 text-center space-y-6">
           <div className="relative inline-block">
-             <div className="animate-spin h-16 w-16 border-4 border-gray-800 border-t-green-500 dark:border-t-blue-500 rounded-full" />
+             <div className="animate-spin h-16 w-16 border-4 border-gray-900 border-t-green-500 dark:border-t-blue-500 rounded-full" />
           </div>
           <p className="font-bold text-green-500 dark:text-blue-500 animate-pulse uppercase text-[10px] tracking-widest">Searching latest injury reports & form...</p>
         </div>
@@ -189,35 +189,70 @@ const GameDetailPage: React.FC<GameDetailPageProps> = ({ favorites, toggleFavori
           <section className="space-y-4">
             <h3 className="text-sm font-black text-white opacity-60 uppercase tracking-widest px-1">AI Betting Angles</h3>
             <div className="grid gap-4">
-              {analysis?.angles?.map((angle, idx) => (
-                <div key={idx} className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border-color)] shadow-sm overflow-hidden theme-transition">
-                  <div className="aspect-video w-full bg-black relative">
-                    {angleImages[idx] ? (
-                      <img src={angleImages[idx]} className="w-full h-full object-cover animate-fadeIn" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-6 space-y-3">
-                        <div className="w-24 h-1 bg-gray-900 rounded-full overflow-hidden">
-                           <div className="h-full bg-green-500 dark:bg-blue-500 animate-progressBar" />
+              {analysis?.angles?.map((angle, idx) => {
+                const isHighConfidence = angle.confidence >= 80;
+                return (
+                  <div key={idx} className={`bg-[var(--card-bg)] rounded-[2rem] border ${isHighConfidence ? 'border-green-500/30 dark:border-blue-500/30 shadow-lg shadow-green-500/5' : 'border-[var(--border-color)]'} overflow-hidden theme-transition animate-slideUp`}>
+                    <div className="aspect-video w-full bg-black relative">
+                      {angleImages[idx] ? (
+                        <img src={angleImages[idx]} className="w-full h-full object-cover animate-fadeIn" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 space-y-3">
+                          <div className="w-24 h-1 bg-gray-900 rounded-full overflow-hidden">
+                             <div className="h-full bg-green-500 dark:bg-blue-500 animate-progressBar" />
+                          </div>
+                        </div>
+                      )}
+                      <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center space-x-2">
+                        <div className="flex flex-col items-end">
+                           <span className="text-[8px] font-black uppercase tracking-widest opacity-60 leading-none mb-0.5">AI Confidence</span>
+                           <span className={`text-[12px] font-black leading-none ${isHighConfidence ? 'text-green-500' : 'text-white'}`}>{angle.confidence}%</span>
+                        </div>
+                        <div className="w-8 h-8 relative flex items-center justify-center">
+                          <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 32 32">
+                            <circle cx="16" cy="16" r="14" fill="transparent" stroke="currentColor" strokeWidth="3" className="text-white/10" />
+                            <circle 
+                              cx="16" cy="16" r="14" fill="transparent" stroke="currentColor" strokeWidth="3" 
+                              strokeDasharray={88}
+                              strokeDashoffset={88 - (88 * angle.confidence) / 100}
+                              className={angle.confidence >= 75 ? 'text-green-500' : angle.confidence >= 40 ? 'text-orange-500' : 'text-red-500'}
+                            />
+                          </svg>
                         </div>
                       </div>
-                    )}
-                  </div>
-                  <div className="p-6 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-black text-white text-lg leading-tight uppercase tracking-tighter pr-4">{angle.title}</h4>
-                      <span className={`text-[8px] font-black px-2 py-1 rounded uppercase text-white ${
-                        angle.riskLevel === 'Low' ? 'bg-green-600' : angle.riskLevel === 'Medium' ? 'bg-orange-600' : 'bg-red-600'
-                      }`}>
-                        {angle.riskLevel} Risk
-                      </span>
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-white opacity-80 leading-snug"><span className="font-bold text-green-500 dark:text-blue-500 uppercase text-[9px]">Insight:</span> {angle.why}</p>
-                      <p className="text-xs text-red-400 italic"><span className="font-bold text-red-500 uppercase text-[9px]">Watch:</span> {angle.risk}</p>
+                    <div className="p-6 space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                           <h4 className="font-black text-white text-lg leading-tight uppercase tracking-tighter pr-4">{angle.title}</h4>
+                           <div className="flex items-center space-x-2">
+                              <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase text-white ${
+                                angle.riskLevel === 'Low' ? 'bg-green-600' : angle.riskLevel === 'Medium' ? 'bg-orange-600' : 'bg-red-600'
+                              }`}>
+                                {angle.riskLevel} Risk
+                              </span>
+                              {isHighConfidence && (
+                                <span className="text-[8px] font-black text-green-500 dark:text-blue-500 uppercase tracking-widest animate-pulse">
+                                  Conviction Signal
+                                </span>
+                              )}
+                           </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3 pt-2 border-t border-white/5">
+                        <div className="flex items-start space-x-3">
+                          <span className="font-black text-green-500 dark:text-blue-500 uppercase text-[9px] mt-1 shrink-0">Insight:</span>
+                          <p className="text-sm text-white opacity-80 leading-snug">{angle.why}</p>
+                        </div>
+                        <div className="flex items-start space-x-3">
+                          <span className="font-black text-red-500 uppercase text-[9px] mt-1 shrink-0">Watch:</span>
+                          <p className="text-xs text-red-400 italic leading-snug">{angle.risk}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </>
