@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { getGameAnalysis, generateAngleImage } from '../services/geminiService';
 import { BettingAngle, GroundingSource, Game } from '../types';
+import { TEAMS } from '../constants';
 
 const FavoriteStar: React.FC<{ isFavorite: boolean; onToggle: () => void }> = ({ isFavorite, onToggle }) => (
   <button 
@@ -31,14 +32,18 @@ const FavoriteStar: React.FC<{ isFavorite: boolean; onToggle: () => void }> = ({
 
 const TeamCrestLarge: React.FC<{ name: string; logoUrl?: string }> = ({ name, logoUrl }) => {
   const [imgError, setImgError] = useState(false);
+  
+  const localTeam = TEAMS.find(t => t.name.toLowerCase() === name.toLowerCase());
+  const finalLogoUrl = (imgError || !logoUrl) ? localTeam?.logoUrl : logoUrl;
+
   const initials = (name || "T").split(' ').map(n => n[0]).join('').substring(0, 2);
   const bgColor = (name || "").length % 2 === 0 ? 'bg-green-600 dark:bg-blue-600' : 'bg-green-800 dark:bg-blue-800';
 
-  if (logoUrl && logoUrl.trim() !== '' && !imgError) {
+  if (finalLogoUrl && finalLogoUrl.trim() !== '' && !imgError) {
     return (
       <div className="w-16 h-16 bg-white rounded-full p-2 border-2 border-white/30 shadow-2xl overflow-hidden flex items-center justify-center shrink-0">
         <img 
-          src={logoUrl} 
+          src={finalLogoUrl} 
           alt={name} 
           className="w-full h-full object-contain" 
           onError={() => setImgError(true)}
@@ -103,6 +108,18 @@ const GameDetailPage: React.FC<GameDetailPageProps> = ({ favorites, toggleFavori
     return `${day} - ${time}`;
   };
 
+  const handleTrackValue = () => {
+    navigate('/value-check', { 
+      state: { 
+        prefill: { 
+          sport: game.sport, 
+          league: game.league, 
+          game: `${game.homeTeam} vs ${game.awayTeam}` 
+        } 
+      } 
+    });
+  };
+
   if (!game) return <div className="p-8 text-center text-white"><Link to="/" className="text-green-500 dark:text-blue-500 uppercase font-black text-xs tracking-widest">Game not found. Go back home.</Link></div>;
 
   const isHomeFavorite = favorites.includes(game.homeTeam);
@@ -138,6 +155,13 @@ const GameDetailPage: React.FC<GameDetailPageProps> = ({ favorites, toggleFavori
               </div>
             </div>
           </div>
+
+          <button 
+            onClick={handleTrackValue}
+            className="w-full py-4 mt-4 bg-green-500 dark:bg-blue-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-transform"
+          >
+            Check Value & Track
+          </button>
         </div>
       </div>
 

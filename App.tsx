@@ -51,18 +51,18 @@ const BottomNav: React.FC = () => {
 const App: React.FC = () => {
   const [savedBets, setSavedBets] = useState<SavedBet[]>([]);
   const [favorites, setFavorites] = useState<string[]>(() => {
-    const stored = localStorage.getItem('pickpal_favorites');
+    const stored = localStorage.getItem('edgebuddy_favorites');
     return stored ? JSON.parse(stored) : [];
   });
-  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('pickpal_theme') === 'dark');
+  const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem('edgebuddy_theme') === 'dark');
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
-    localStorage.setItem('pickpal_theme', darkMode ? 'dark' : 'light');
+    localStorage.setItem('edgebuddy_theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
   useEffect(() => {
-    const stored = localStorage.getItem('pickpal_bets');
+    const stored = localStorage.getItem('edgebuddy_bets');
     if (stored) setSavedBets(JSON.parse(stored));
   }, []);
 
@@ -71,7 +71,7 @@ const App: React.FC = () => {
       const updated = prev.includes(teamName) 
         ? prev.filter(t => t !== teamName) 
         : [...prev, teamName];
-      localStorage.setItem('pickpal_favorites', JSON.stringify(updated));
+      localStorage.setItem('edgebuddy_favorites', JSON.stringify(updated));
       return updated;
     });
   };
@@ -79,13 +79,13 @@ const App: React.FC = () => {
   const saveBet = (bet: SavedBet) => {
     const updated = [bet, ...savedBets];
     setSavedBets(updated);
-    localStorage.setItem('pickpal_bets', JSON.stringify(updated));
+    localStorage.setItem('edgebuddy_bets', JSON.stringify(updated));
   };
 
   const updateBetStatus = (id: string, status: 'Pending' | 'Won' | 'Lost') => {
     const updated = savedBets.map(b => b.id === id ? { ...b, status } : b);
     setSavedBets(updated);
-    localStorage.setItem('pickpal_bets', JSON.stringify(updated));
+    localStorage.setItem('edgebuddy_bets', JSON.stringify(updated));
   };
 
   return (
@@ -94,7 +94,7 @@ const App: React.FC = () => {
         <header className="bg-[var(--card-bg)] px-4 py-4 border-b border-[var(--border-color)] flex items-center justify-between sticky top-0 z-40 theme-transition">
           <Link to="/" className="flex items-center space-x-2">
             <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-green-600 dark:from-blue-400 dark:to-blue-600 uppercase tracking-tighter">
-              PickPal
+              EdgeBuddy
             </h1>
           </Link>
           <div className="flex items-center space-x-3">

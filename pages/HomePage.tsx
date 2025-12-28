@@ -3,17 +3,23 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Sport, Game } from '../types';
 import { getLiveGames } from '../services/geminiService';
+import { TEAMS } from '../constants';
 
 const TeamCrest: React.FC<{ name: string; logoUrl?: string; size?: string; isFavorite?: boolean }> = ({ name, logoUrl, size = "w-6 h-6", isFavorite }) => {
   const [imgError, setImgError] = useState(false);
+  
+  // Try to find a local logo if none provided or error
+  const localTeam = TEAMS.find(t => t.name.toLowerCase() === name.toLowerCase());
+  const finalLogoUrl = (imgError || !logoUrl) ? localTeam?.logoUrl : logoUrl;
+
   const initials = (name || "T").split(' ').map(n => n[0]).join('').substring(0, 2);
   const bgColor = isFavorite ? 'bg-yellow-600' : ((name || "").length % 2 === 0 ? 'bg-green-700 dark:bg-blue-700' : 'bg-green-800 dark:bg-blue-800');
 
-  if (logoUrl && logoUrl.trim() !== '' && !imgError) {
+  if (finalLogoUrl && finalLogoUrl.trim() !== '' && !imgError) {
     return (
       <div className={`${size} shrink-0 bg-white rounded-full p-0.5 border ${isFavorite ? 'border-yellow-400' : 'border-gray-800'} shadow-sm overflow-hidden flex items-center justify-center`}>
         <img 
-          src={logoUrl} 
+          src={finalLogoUrl} 
           alt={name} 
           className="w-full h-full object-contain" 
           onError={() => setImgError(true)}

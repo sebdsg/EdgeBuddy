@@ -79,8 +79,8 @@ export async function getLiveGames(sports: string[]): Promise<Game[]> {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Search sofascore.com for 3-5 major sports matches for ${sports.join(', ')} scheduled for ${today}.
-      Focus on results with valid image logos. 
+      contents: `Search sofascore.com and official league sites for 3-5 major sports matches for ${sports.join(', ')} scheduled for ${today}.
+      CRITICAL: For 'homeLogoUrl' and 'awayLogoUrl', you must provide high-quality URLs to the OFFICIAL team crests (preferably transparent PNGs from Wikipedia Commons or official team sites). Do not provide generic sports icons or placeholder images.
       Return JSON: Array of {id, sport, league, homeTeam, awayTeam, startTime, homeLogoUrl, awayLogoUrl, insights: string[]}.`,
       config: {
         tools: [{ googleSearch: {} }],

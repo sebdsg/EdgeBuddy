@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { Sport, SavedBet, ValueCheckResult } from '../types';
 import { LEAGUES, MOCK_GAMES } from '../constants';
 import { americanToImplied, decimalToImplied, impliedToAmerican, getProbabilityMock } from '../utils/bettingUtils';
@@ -20,9 +20,18 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
   const [result, setResult] = useState<ValueCheckResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [oddsError, setOddsError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const sports: Sport[] = ['Soccer', 'Basketball', 'Football', 'Hockey', 'Baseball'];
   const markets = ['Moneyline', 'Spread', 'Total', 'Team Total', '1st Half', 'Player Prop'];
+
+  const sportLabels: Record<Sport, string> = {
+    Soccer: 'Soccer',
+    Basketball: 'NBA',
+    Football: 'NFL',
+    Hockey: 'NHL',
+    Baseball: 'MLB'
+  };
 
   // Filter leagues based on selected sport
   const filteredLeagues = useMemo(() => {
@@ -79,6 +88,7 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
     let val = e.target.value.trim();
     setOdds(val);
     validateOdds(val, oddsFormat);
+    setSaved(false); // Reset saved status if form changes
   };
 
   const handleFormatToggle = (format: 'american' | 'decimal') => {
@@ -86,6 +96,7 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
     setOdds(''); 
     setOddsError(null);
     setResult(null);
+    setSaved(false);
   };
 
   const handleCheck = async () => {
@@ -94,6 +105,7 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
     
     setLoading(true);
     setResult(null);
+    setSaved(false);
 
     const implied = oddsFormat === 'american' 
       ? americanToImplied(numOdds) 
@@ -120,6 +132,29 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
     setLoading(false);
   };
 
+  const handleSaveBet = () => {
+    if (!result) return;
+    
+    const valueRating: 'Good' | 'Fair' | 'Bad' = 
+      result.rating === 'Good value' ? 'Good' : 
+      result.rating === 'Fair price' ? 'Fair' : 'Bad';
+
+    const newBet: SavedBet = {
+      id: Math.random().toString(36).substring(2, 11),
+      gameId: game,
+      gameTitle: game,
+      market,
+      selection,
+      odds: oddsFormat === 'american' ? odds : `@${odds}`,
+      valueRating,
+      status: 'Pending',
+      timestamp: Date.now()
+    };
+
+    onSave(newBet);
+    setSaved(true);
+  };
+
   const isFormValid = game && selection && odds && !oddsError && !loading;
 
   return (
@@ -141,7 +176,7 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
                 onChange={(e) => setSport(e.target.value as Sport)}
                 className="w-full bg-black/40 border border-[var(--border-color)]/20 rounded-2xl p-4 text-sm text-white font-bold uppercase outline-none focus:border-green-500/50 transition-colors appearance-none"
               >
-                {sports.map(s => <option key={s} value={s} className="bg-zinc-900">{s === 'Basketball' ? 'NBA' : s === 'Football' ? 'NFL' : s === 'Hockey' ? 'NHL' : s === 'Baseball' ? 'MLB' : s}</option>)}
+                {sports.map(s => <option key={s} value={s} className="bg-zinc-900">{sportLabels[s]}</option>)}
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" /></svg>
@@ -261,7 +296,27 @@ const ValueCheckPage: React.FC<{ onSave: (bet: SavedBet) => void }> = ({ onSave 
             <h3 className="text-4xl font-black uppercase tracking-tighter text-white relative z-10">
               {result.rating}
             </h3>
-            <p className="text-[10px] opacity-70 font-black uppercase tracking-[0.3em] relative z-10">Edge Buddy Verdict</p>
+            <p className="text-[10px] opacity-70 font-black uppercase tracking-[0.3em] relative z-10">EdgeBuddy Verdict</p>
+            
+            <div className="pt-6 relative z-10">
+              {!saved ? (
+                <button 
+                  onClick={handleSaveBet}
+                  className="px-8 py-3 bg-white text-black font-black uppercase text-[10px] tracking-widest rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all"
+                >
+                  Save to My Bets
+                </button>
+              ) : (
+                <div className="space-y-3 animate-fadeIn">
+                  <div className="text-xs font-black text-white bg-green-500/20 dark:bg-blue-500/20 border border-green-500 dark:border-blue-500 py-2 px-4 rounded-full inline-block uppercase tracking-widest">
+                    Bet Tracked!
+                  </div>
+                  <Link to="/my-bets" className="block text-[10px] font-bold text-white opacity-40 uppercase tracking-widest hover:opacity-100 transition-opacity">
+                    View in History →
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
 
           <section className="space-y-4">
